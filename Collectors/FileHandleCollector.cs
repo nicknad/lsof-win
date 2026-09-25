@@ -15,6 +15,8 @@ internal static class FileHandleCollector
         Action<WindowsHandleApi.HandleScanProgress>? progress,
         CancellationToken cancellationToken)
     {
+        // Production wiring: WindowsHandleApi enumerates the native handle table and IsElevated
+        // checks the current token. Both are parameters so tests can inject fakes.
         Collect(catalog, selection, entries, report, progress, WindowsHandleApi.EnumerateDiskFileHandles, IsElevated, cancellationToken);
     }
 
@@ -56,6 +58,8 @@ internal static class FileHandleCollector
         }
     }
 
+    // Uses the .NET Windows principal APIs: GetCurrent reads this process's login token and
+    // IsInRole(Administrator) asks the OS whether it belongs to the local Administrators group.
     private static bool IsElevated()
     {
         try

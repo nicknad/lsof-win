@@ -89,11 +89,12 @@ internal static class WindowsHandleApi
             cancellationToken.ThrowIfCancellationRequested();
             if (TryGetHandleEntries(buffer, bufferSize, out long count, out int entrySize, out IntPtr entryPointer, out string? warning))
             {
-                IntPtr currentProcess = nativeApi.GetCurrentProcess();
+                IntPtr currentProcess = nativeApi.GetCurrentProcess(); // Pseudo-handle of this process; target for duplicated handles.
 
                 for (long i = 0; i < count; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    // Marshal one native SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX row into managed form, then advance the cursor.
                     SystemHandleEntry entry = Marshal.PtrToStructure<SystemHandleEntry>(entryPointer);
                     entryPointer = IntPtr.Add(entryPointer, entrySize);
 
@@ -190,6 +191,7 @@ internal static class WindowsHandleApi
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 buffer = memoryAllocator.Allocate(bufferSize);
+                // Ask the kernel to fill the buffer with the system-wide handle table; requiredSize receives the bytes needed.
                 status = nativeApi.QuerySystemInformation(SystemExtendedHandleInformation, buffer, bufferSize, out requiredSize);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (status != StatusInfoLengthMismatch)
@@ -261,6 +263,7 @@ internal static class WindowsHandleApi
         out IntPtr entryPointer,
         out string? warning)
     {
+        // Marshal.SizeOf gives the expected native row size used to validate the returned table.
         return TryGetHandleEntries(buffer, bufferSize, IntPtr.Size, Marshal.SizeOf<SystemHandleEntry>(), out count, out entrySize, out entryPointer, out warning);
     }
 
@@ -292,6 +295,7 @@ internal static class WindowsHandleApi
             return false;
         }
 
+        // Marshal.ReadInt64/ReadInt32 reads the ULONG_PTR NumberOfHandles field that heads the table.
         count = pointerSize == sizeof(long) ? Marshal.ReadInt64(buffer) : Marshal.ReadInt32(buffer); // NumberOfHandles is ULONG_PTR.
         long maximumEntryCount = (bufferSize - headerSize) / entrySize;
         if (count < 0 || count > maximumEntryCount)
@@ -308,6 +312,8 @@ internal static class WindowsHandleApi
     {
         if (!processHandlesById.TryGetValue(processId, out IntPtr processHandle))
         {
+            // OpenProcess asks the kernel for a handle to the owning process; PROCESS_DUP_HANDLE
+            // is the access right that lets us copy handles out of it.
             processHandle = nativeApi.OpenProcess(ProcessDuplicateHandle, false, processId);
             processHandlesById.Add(processId, processHandle);
         }
@@ -325,6 +331,7 @@ internal static class WindowsHandleApi
         out bool inspectionFailed)
     {
         inspectionFailed = false;
+        // DuplicateHandle copies the target process's handle into this process so the object can be queried.
         // Desired access is ignored when DUPLICATE_SAME_ACCESS is set.
         if (!nativeApi.DuplicateHandle(processHandle, entry.HandleValue, currentProcess, out IntPtr duplicate, 0, false, DuplicateSameAccess))
         {
@@ -334,6 +341,7 @@ internal static class WindowsHandleApi
 
         try
         {
+            // GetFileType tells us what kind of object the handle references; only disk files are in scope.
             uint fileType = nativeApi.GetFileType(duplicate);
             if (fileType != FileTypeDisk)
             {
@@ -361,9 +369,11 @@ internal static class WindowsHandleApi
         }
     }
 
+    // Resolves a handle to its final DOS path, retrying once with the size reported by the API.
     internal static string? GetPathFromHandle(IWindowsHandleNativeApi nativeApi, IntPtr handle)
     {
         char[] buffer = new char[InitialFinalPathBufferSize];
+        // GetFinalPathNameByHandle fills the buffer and returns the required character count.
         uint length = nativeApi.GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Length, 0); // Zero flags request a normalized DOS path.
         if (length == 0 || length > MaximumFinalPathLength)
         {
@@ -372,6 +382,7 @@ internal static class WindowsHandleApi
         if (length >= buffer.Length)
         {
             buffer = new char[(int)length + 1]; // Reserve one extra character for the terminator.
+            // Second call retries with the length the first call reported.
             length = nativeApi.GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Length, 0);
             if (length == 0 || length > MaximumFinalPathLength || length >= buffer.Length)
             {
@@ -393,6 +404,7 @@ internal static class WindowsHandleApi
 
     private static void CloseHandleIfOpen(IWindowsHandleNativeApi nativeApi, IntPtr handle, List<string> warnings)
     {
+        // CloseHandle releases the kernel handle; a failure is only reported as a warning.
         if (handle != IntPtr.Zero && !nativeApi.CloseHandle(handle))
         {
             warnings.Add("Warning: failed to close a native handle.");
