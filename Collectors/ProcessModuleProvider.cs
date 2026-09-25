@@ -8,6 +8,8 @@ internal sealed class ProcessModuleProvider : IProcessModuleProvider
     public ModuleSnapshot GetModules(Process process, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        // Process.Modules asks the OS for the target process's loaded module list; enumerating it
+        // can throw for exited or protected processes.
         ProcessModule[] modules = SnapshotModules(process.Modules, cancellationToken);
         List<string> paths = new(modules.Length);
         int unreadablePathCount = 0;
@@ -17,6 +19,7 @@ internal sealed class ProcessModuleProvider : IProcessModuleProvider
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
+                // ProcessModule.FileName is another OS read (the module's path) that can fail per module.
                 paths.Add(module.FileName ?? "");
             }
             catch (Exception exception) when (ProcessCatalog.IsExpectedProcessInspectionException(process, exception))
@@ -35,6 +38,7 @@ internal sealed class ProcessModuleProvider : IProcessModuleProvider
         for (int index = 0; index < modules.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            // Indexing ProcessModuleCollection reads one native module entry at a time.
             snapshot[index] = modules[index];
         }
 

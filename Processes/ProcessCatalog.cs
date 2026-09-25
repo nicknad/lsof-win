@@ -27,6 +27,8 @@ internal sealed class ProcessCatalog : IDisposable
         Process[] processes;
         try
         {
+            // Process.GetProcesses is the .NET wrapper over the OS process snapshot; the returned
+            // Process objects may still throw when their details are queried later.
             processes = Process.GetProcesses();
         }
         catch (Exception exception) when (IsExpectedInspectionException(exception))
@@ -47,6 +49,7 @@ internal sealed class ProcessCatalog : IDisposable
                 int id;
                 try
                 {
+                    // Process.Id reads the PID; it can throw if the process has already exited.
                     id = process.Id;
                 }
                 catch (Exception exception) when (IsExpectedProcessInspectionException(process, exception))
@@ -63,6 +66,7 @@ internal sealed class ProcessCatalog : IDisposable
                 string name = "";
                 try
                 {
+                    // Process.ProcessName reads the executable name (a Win32 query under the hood).
                     name = process.ProcessName;
                 }
                 catch (Exception exception) when (IsExpectedProcessInspectionException(process, exception))
@@ -73,6 +77,7 @@ internal sealed class ProcessCatalog : IDisposable
                 string path = "";
                 try
                 {
+                    // Process.MainModule opens a module snapshot and FileName resolves the image path.
                     path = process.MainModule?.FileName ?? "";
                 }
                 catch (Exception exception) when (IsExpectedProcessInspectionException(process, exception))
@@ -135,6 +140,7 @@ internal sealed class ProcessCatalog : IDisposable
 
         try
         {
+            // InvalidOperationException usually means the process exited; HasExited confirms it.
             return process.HasExited;
         }
         catch (Exception hasExitedException) when (hasExitedException is Win32Exception or UnauthorizedAccessException or NotSupportedException or InvalidOperationException)

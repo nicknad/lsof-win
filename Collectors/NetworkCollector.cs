@@ -224,6 +224,8 @@ internal static class NetworkCollector
         };
     }
 
+    // Reads the MIB_*_OWNER_PID row field-by-field with Marshal.Read* at the offsets in
+    // NetworkRowLayout, because the row structs cannot be expressed as simple P/Invoke types.
     private static LsofEntry? DecodeRow(
         TransportProtocol protocol,
         IntPtr row,
@@ -283,6 +285,7 @@ internal static class NetworkCollector
             return false;
         }
 
+        // Marshal.ReadInt32 pulls the DWORD row count that precedes the table entries.
         count = Marshal.ReadInt32(buffer);
         int maximumCount = (bufferSize - sizeof(int)) / rowSize;
         if (count < 0 || count > maximumCount)
@@ -307,6 +310,7 @@ internal static class NetworkCollector
         resultSize = 0;
         int size = 0;
         cancellationToken.ThrowIfCancellationRequested();
+        // First call passes a null buffer so Windows reports the required table size.
         uint result = QueryNativeTable(protocol, nativeApi, IntPtr.Zero, ref size, family, tableClass);
         cancellationToken.ThrowIfCancellationRequested();
         if (result != IpHelperApi.ErrorInsufficientBuffer)
@@ -333,6 +337,7 @@ internal static class NetworkCollector
             bool returnBuffer = false;
             try
             {
+                // Fill the allocated buffer with the current table rows; retried if the table grew.
                 result = QueryNativeTable(protocol, nativeApi, buffer, ref bufferSize, family, tableClass);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (result == IpHelperApi.ErrorSuccess)
@@ -390,6 +395,8 @@ internal static class NetworkCollector
         int family,
         int tableClass)
     {
+        // GetExtended*Table are the iphlpapi calls that copy the MIB_*_OWNER_PID rows into the
+        // buffer and update size with the bytes written (or required when the buffer is too small).
         return protocol switch
         {
             TransportProtocol.Tcp => nativeApi.GetExtendedTcpTable(buffer, ref size, false, family, tableClass, 0),
@@ -412,6 +419,7 @@ internal static class NetworkCollector
 
     private static string ReadIPv4Address(IntPtr entry, int addressOffset)
     {
+        // Marshal.ReadInt32 reads the IPv4 address as a network-order 32-bit value.
         return new IPAddress((long)(uint)Marshal.ReadInt32(entry, addressOffset)).ToString();
     }
 
@@ -425,8 +433,9 @@ internal static class NetworkCollector
     private static string ReadIPv6Address(IntPtr entry, int addressOffset, int scopeIdOffset)
     {
         byte[] address = new byte[IPv6AddressLength];
+        // Marshal.Copy pulls the raw 16 address bytes out of the native row.
         Marshal.Copy(IntPtr.Add(entry, addressOffset), address, 0, address.Length);
-        long scopeId = (uint)Marshal.ReadInt32(entry, scopeIdOffset);
+        long scopeId = (uint)Marshal.ReadInt32(entry, scopeIdOffset); // Marshal.ReadInt32 reads the scope ID DWORD.
         return new IPAddress(address, scopeId).ToString();
     }
 

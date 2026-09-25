@@ -121,6 +121,8 @@ internal sealed class ProcessFilter
         if (!_regexCache.TryGetValue(cacheKey, out Regex? regex))
         {
             string effectivePattern = stripExeSuffix ? pattern[..^ExecutableSuffixLength] : pattern;
+            // Translate the wildcard pattern into an anchored regex (* -> .*, ? -> .) and cache it;
+            // NonBacktracking keeps matching linear-time on hostile input.
             string expression = "^" + Regex.Escape(effectivePattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
             regex = new Regex(expression, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
             _regexCache.Add(cacheKey, regex);

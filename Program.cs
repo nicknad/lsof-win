@@ -16,6 +16,8 @@ internal static class Program
     private static int Main(string[] args)
     {
         using CancellationTokenSource cancellation = new();
+        // Console.CancelKeyPress fires on Ctrl+C; setting eventArgs.Cancel keeps the process alive so
+        // the collectors can stop cooperatively through the token and return the cancelled exit code.
         ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
         {
             eventArgs.Cancel = true;
