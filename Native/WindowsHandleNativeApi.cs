@@ -55,15 +55,11 @@ internal sealed class WindowsHandleNativeApi : IWindowsHandleNativeApi
         uint pathLength,
         uint flags);
 
-    public int QuerySystemInformation(int infoClass, IntPtr information, int informationLength, out int returnLength)
-    {
-        return NtQuerySystemInformation(infoClass, information, informationLength, out returnLength);
-    }
+    public int QuerySystemInformation(int infoClass, IntPtr information, int informationLength, out int returnLength) =>
+        NtQuerySystemInformation(infoClass, information, informationLength, out returnLength);
 
-    public IntPtr OpenProcess(int access, bool inherit, int processId)
-    {
-        return OpenProcessNative(access, inherit, processId);
-    }
+    public IntPtr OpenProcess(int access, bool inherit, int processId) =>
+        OpenProcessNative(access, inherit, processId);
 
     public bool DuplicateHandle(
         IntPtr sourceProcess,
@@ -72,28 +68,15 @@ internal sealed class WindowsHandleNativeApi : IWindowsHandleNativeApi
         out IntPtr targetHandle,
         uint access,
         bool inherit,
-        uint options)
-    {
-        return DuplicateHandleNative(sourceProcess, sourceHandle, targetProcess, out targetHandle, access, inherit, options);
-    }
+        uint options) =>
+        DuplicateHandleNative(sourceProcess, sourceHandle, targetProcess, out targetHandle, access, inherit, options);
 
-    public IntPtr GetCurrentProcess()
-    {
-        return GetCurrentProcessNative();
-    }
+    public IntPtr GetCurrentProcess() => GetCurrentProcessNative();
 
-    public bool CloseHandle(IntPtr handle)
-    {
-        return CloseHandleNative(handle);
-    }
+    public bool CloseHandle(IntPtr handle) => CloseHandleNative(handle);
 
-    public uint GetFileType(IntPtr handle)
-    {
-        return GetFileTypeNative(handle);
-    }
+    public uint GetFileType(IntPtr handle) => GetFileTypeNative(handle);
 
-    public uint GetFinalPathNameByHandle(IntPtr handle, char[] path, uint pathLength, uint flags)
-    {
-        return GetFinalPathNameByHandleNative(handle, path, pathLength, flags);
-    }
+    public uint GetFinalPathNameByHandle(IntPtr handle, char[] path, uint pathLength, uint flags) =>
+        GetFinalPathNameByHandleNative(handle, path, pathLength, flags);
 }

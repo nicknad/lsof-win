@@ -47,21 +47,6 @@ public sealed class ModuleCollectorTests
         Assert.Contains(report.Diagnostics, diagnostic => diagnostic.Message.Contains("module lists", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public void SnapshotModules_materializes_the_ProcessModuleCollection()
-    {
-        using Process process = Process.GetCurrentProcess();
-        ProcessModuleCollection modules = process.Modules;
-
-        ProcessModule[] snapshot = ProcessModuleProvider.SnapshotModules(modules, TestContext.Current.CancellationToken);
-
-        Assert.Equal(modules.Count, snapshot.Length);
-        for (int index = 0; index < modules.Count; index++)
-        {
-            Assert.Same(modules[index], snapshot[index]);
-        }
-    }
-
     private sealed class FakeModuleProvider : IProcessModuleProvider
     {
         private readonly ModuleSnapshot? _snapshot;

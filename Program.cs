@@ -66,7 +66,7 @@ internal static class Program
 
         CollectionReport report = new();
         using ProcessCatalog catalog = ProcessCatalog.Create(report, cancellationToken);
-        ProcessFilter filter = new(options.ProcessFilters);
+        ProcessFilter filter = new(options.ProcessFilters, options.UserFilters, CreateOwnerProvider(options));
         ProcessSelection selection = filter.ResolveSelection(catalog, report, cancellationToken);
 
         List<LsofEntry> entries = new();
@@ -84,6 +84,7 @@ internal static class Program
             FileHandleCollector.Collect(
                 catalog,
                 selection,
+                new FileFilter(options.PathFilters),
                 entries,
                 report,
                 progress => Console.Error.WriteLine(
@@ -106,23 +107,21 @@ internal static class Program
         if (options.Json)
         {
             JsonOutputWriter.Write(entries);
-            WriteDiagnostics(report);
-            return GetExitCode(report);
         }
-
-        if (entries.Count == 0)
+        else if (entries.Count == 0)
         {
             Console.WriteLine("No matching open files, connections, or modules.");
-            WriteDiagnostics(report);
-            return GetExitCode(report);
+        }
+        else
+        {
+            TableOutputWriter.Write(entries);
+
+            LsofSummary summary = LsofSummary.FromEntries(entries);
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"{summary.Connections} connection(s), {summary.Files} file handle(s), {summary.Modules} module(s)");
+            Console.ResetColor();
         }
 
-        TableOutputWriter.Write(entries);
-
-        LsofSummary summary = LsofSummary.FromEntries(entries);
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine($"{summary.Connections} connection(s), {summary.Files} file handle(s), {summary.Modules} module(s)");
-        Console.ResetColor();
         WriteDiagnostics(report);
         return GetExitCode(report);
     }
@@ -136,9 +135,22 @@ internal static class Program
     {
         if (!options.Network && !options.Files && !options.Modules)
         {
+            // A positional path filter targets file handles, so default to files only.
+            if (options.PathFilters.Count > 0)
+            {
+                options.Files = true;
+                return;
+            }
+
             options.Network = true;
             options.Files = true;
         }
+    }
+
+    // Only resolves owners when a user filter is present, so the common path pays no extra cost.
+    private static ProcessOwnerProvider? CreateOwnerProvider(CommandLineOptions options)
+    {
+        return options.UserFilters.Count > 0 ? new ProcessOwnerProvider() : null;
     }
 
     private static void WriteDiagnostics(CollectionReport report)

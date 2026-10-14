@@ -106,17 +106,14 @@ internal sealed class ProcessCatalog : IDisposable
 
     public LsofEntry CreateEntry(int processId)
     {
-        if (_processInfoById.TryGetValue(processId, out ProcessInfo? info))
+        _processInfoById.TryGetValue(processId, out ProcessInfo? info);
+        string name = string.IsNullOrEmpty(info?.Name) ? GetFallbackName(processId) : info.Name;
+        return new LsofEntry
         {
-            return new LsofEntry
-            {
-                ProcessId = processId,
-                ProcessName = string.IsNullOrEmpty(info.Name) ? GetFallbackName(processId) : info.Name,
-                ProcessPath = info.Path
-            };
-        }
-
-        return new LsofEntry { ProcessId = processId, ProcessName = GetFallbackName(processId) };
+            ProcessId = processId,
+            ProcessName = name,
+            ProcessPath = info?.Path ?? ""
+        };
     }
 
     public void Dispose()

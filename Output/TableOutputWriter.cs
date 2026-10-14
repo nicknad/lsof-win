@@ -31,19 +31,19 @@ internal static class TableOutputWriter
             }
         }
 
-        for (int i = 0; i < widths.Length; i++)
-        {
-            Console.Write(headers[i].PadRight(widths[i] + ColumnPadding));
-        }
-        Console.WriteLine(headers[nameColumn]);
-
+        WriteRow(headers, widths, nameColumn);
         foreach (string[] rowCells in cells)
         {
-            for (int i = 0; i < widths.Length; i++)
-            {
-                Console.Write(rowCells[i].PadRight(widths[i] + ColumnPadding));
-            }
-            Console.WriteLine(rowCells[nameColumn]);
+            WriteRow(rowCells, widths, nameColumn);
         }
+    }
+
+    private static void WriteRow(ReadOnlySpan<string> rowCells, int[] widths, int nameColumn)
+    {
+        for (int i = 0; i < widths.Length; i++)
+        {
+            Console.Write(rowCells[i].PadRight(widths[i] + ColumnPadding));
+        }
+        Console.WriteLine(rowCells[nameColumn]);
     }
 }

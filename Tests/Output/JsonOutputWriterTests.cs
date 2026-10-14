@@ -27,5 +27,8 @@ public sealed class JsonOutputWriterTests
         JsonElement row = Assert.Single(document.RootElement.EnumerateArray());
         Assert.Equal(7, row.GetProperty("ProcessId").GetInt32());
         Assert.Equal("TCP", row.GetProperty("Protocol").GetString());
+        Assert.Equal("IPv4", row.GetProperty("Category").GetString());
+        Assert.False(row.TryGetProperty("Kind", out _));
+        Assert.False(row.TryGetProperty("AddressFamily", out _));
     }
 }

@@ -9,13 +9,22 @@ internal sealed class ProcessFilter
     private const int ExecutableSuffixLength = 4; // Length of the ".exe" suffix.
 
     private readonly string[] _processFilters;
+    private readonly string[] _userFilters;
+    private readonly IProcessOwnerProvider? _ownerProvider;
     private readonly HashSet<int> _processIdFilters = new();
     private readonly string[] _processNameFilters;
     private readonly Dictionary<(string Pattern, bool StripExeSuffix), Regex> _regexCache = new();
 
     public ProcessFilter(List<string> filters)
+        : this(filters, Array.Empty<string>(), null)
+    {
+    }
+
+    public ProcessFilter(IReadOnlyList<string> filters, IReadOnlyList<string> userFilters, IProcessOwnerProvider? ownerProvider)
     {
         _processFilters = filters.ToArray();
+        _userFilters = userFilters.ToArray();
+        _ownerProvider = ownerProvider;
         List<string> processNameFilters = new(filters.Count);
         foreach (string filter in _processFilters)
         {
@@ -35,7 +44,7 @@ internal sealed class ProcessFilter
     public ProcessSelection ResolveSelection(ProcessCatalog catalog, CollectionReport report, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (_processFilters.Length == 0)
+        if (_processFilters.Length == 0 && _userFilters.Length == 0)
         {
             return ProcessSelection.AllProcesses;
         }
@@ -45,7 +54,7 @@ internal sealed class ProcessFilter
         foreach (ProcessInfo info in catalog.ProcessInfos)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (Matches(info.ProcessId, info.Name))
+            if (MatchesProcessFilter(info.ProcessId, info.Name) || MatchesUserFilter(info.ProcessId))
             {
                 matchedRunningProcess = true;
                 processIds.Add(info.ProcessId);
@@ -54,16 +63,21 @@ internal sealed class ProcessFilter
 
         if (!matchedRunningProcess)
         {
-            report.AddInformation("No running process matches: " + string.Join(", ", _processFilters));
+            report.AddInformation("No running process matches: " + string.Join(", ", DescribeFilters()));
         }
         return ProcessSelection.FromProcessIds(processIds);
     }
 
-    public bool Matches(int processId, string processName)
+    private IEnumerable<string> DescribeFilters()
+    {
+        return _processFilters.Concat(_userFilters);
+    }
+
+    private bool MatchesProcessFilter(int processId, string processName)
     {
         if (_processFilters.Length == 0)
         {
-            return true;
+            return false;
         }
 
         if (_processIdFilters.Contains(processId))
@@ -79,6 +93,46 @@ internal sealed class ProcessFilter
             }
         }
         return false;
+    }
+
+    private bool MatchesUserFilter(int processId)
+    {
+        if (_userFilters.Length == 0 || _ownerProvider is null)
+        {
+            return false;
+        }
+
+        string? owner = _ownerProvider.GetOwner(processId);
+        if (string.IsNullOrEmpty(owner))
+        {
+            return false;
+        }
+
+        foreach (string filter in _userFilters)
+        {
+            if (UserMatches(owner, filter))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool UserMatches(string owner, string filter)
+    {
+        if (string.Equals(owner, filter, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Also accept a bare account name when the owner is domain-qualified ("DOMAIN\user").
+        int separator = owner.LastIndexOf('\\');
+        return separator >= 0 && owner.AsSpan(separator + 1).Equals(filter.AsSpan(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool Matches(int processId, string processName)
+    {
+        return _processFilters.Length == 0 || MatchesProcessFilter(processId, processName);
     }
 
     private bool NameMatches(string pattern, string name)

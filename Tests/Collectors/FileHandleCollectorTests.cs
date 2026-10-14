@@ -22,6 +22,7 @@ public sealed class FileHandleCollectorTests
         FileHandleCollector.Collect(
             catalog,
             ProcessSelection.FromProcessIds([]),
+            FileFilter.Empty,
             entries,
             report,
             progress: null,
@@ -55,6 +56,7 @@ public sealed class FileHandleCollectorTests
         FileHandleCollector.Collect(
             catalog,
             ProcessSelection.FromProcessIds([FixtureProcessId]),
+            FileFilter.Empty,
             entries,
             report,
             progress: null,
@@ -88,6 +90,7 @@ public sealed class FileHandleCollectorTests
         FileHandleCollector.Collect(
             catalog,
             ProcessSelection.FromProcessIds([FixtureProcessId]),
+            FileFilter.Empty,
             entries,
             report,
             progress: null,
@@ -100,5 +103,35 @@ public sealed class FileHandleCollectorTests
         Assert.Equal("0xabc", entry.Handle);
         Assert.Equal("C:\\temp\\fixture.txt", entry.Name);
         Assert.Empty(report.Diagnostics);
+    }
+
+    [Fact]
+    public void Collect_keeps_only_handles_matching_the_file_filter()
+    {
+        const string wanted = "C:\\temp\\wanted.txt";
+        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(FixtureProcessId, "fixture", "C:\\fixture.exe"));
+        CollectionReport report = new();
+        List<LsofEntry> entries = new();
+        WindowsHandleApi.HandleEnumerator enumerate = (_, _, _) =>
+            new WindowsHandleApi.EnumerationResult(
+                [
+                    new WindowsHandleApi.OpenFileHandle { ProcessId = FixtureProcessId, Handle = 0x1, Path = wanted },
+                    new WindowsHandleApi.OpenFileHandle { ProcessId = FixtureProcessId, Handle = 0x2, Path = "C:\\temp\\other.txt" }
+                ],
+                []);
+
+        FileHandleCollector.Collect(
+            catalog,
+            ProcessSelection.FromProcessIds([FixtureProcessId]),
+            new FileFilter([wanted]),
+            entries,
+            report,
+            progress: null,
+            enumerateHandles: enumerate,
+            isElevated: () => true,
+            TestContext.Current.CancellationToken);
+
+        LsofEntry entry = Assert.Single(entries);
+        Assert.Equal(wanted, entry.Name);
     }
 }

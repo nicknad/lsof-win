@@ -1,15 +1,16 @@
-using System.Globalization;
-
 namespace Lsof.Cli;
 
 internal sealed class CommandLineOptions
 {
     private const string ProcessOptionPrefix = "--process=";
     private const string PortOptionPrefix = "--port=";
-    private const int MinimumPort = 0;
-    private const int MaximumPort = ushort.MaxValue; // TCP/UDP ports are unsigned 16-bit values.
+    private const string CommandOptionPrefix = "--command=";
+    private const string UserOptionPrefix = "--user=";
+    private const string NetworkSwitchPrefix = "-i";
 
     public List<string> ProcessFilters { get; } = new();
+    public List<string> UserFilters { get; } = new();
+    public List<string> PathFilters { get; } = new();
     public List<int> PortFilters { get; } = new();
     public bool Network { get; set; }
     public bool Files { get; set; }
@@ -35,6 +36,13 @@ internal sealed class CommandLineOptions
                 case "-i":
                 case "--network":
                     options.Network = true;
+                    // Unix form: "lsof -i :22" passes the port spec as a separate argument.
+                    if (arg == NetworkSwitchPrefix
+                        && i + 1 < args.Length
+                        && NetworkSpecParser.LooksLikeNetworkSpec(args[i + 1]))
+                    {
+                        if (!NetworkSpecParser.ParseNetworkSpec(options.PortFilters, args[++i])) return false;
+                    }
                     break;
                 case "-f":
                 case "--files":
@@ -50,7 +58,6 @@ internal sealed class CommandLineOptions
                     options.Files = true;
                     options.Modules = true;
                     break;
-                case "-u":
                 case "--unique":
                     options.Unique = true;
                     break;
@@ -60,8 +67,15 @@ internal sealed class CommandLineOptions
                     break;
                 case "-p":
                 case "--process":
+                case "-c":
+                case "--command":
                     if (!TryReadSeparateValue(args, ref i, out string processValue)) return false;
-                    if (!AddProcessFilters(options, processValue)) return false;
+                    if (!AddStringFilters(options.ProcessFilters, processValue)) return false;
+                    break;
+                case "-u":
+                case "--user":
+                    if (!TryReadSeparateValue(args, ref i, out string userValue)) return false;
+                    if (!AddStringFilters(options.UserFilters, userValue)) return false;
                     break;
                 case "-P":
                 case "--port":
@@ -69,22 +83,55 @@ internal sealed class CommandLineOptions
                     if (!AddPortFilters(options, portValue)) return false;
                     break;
                 default:
-                    if (arg.StartsWith(ProcessOptionPrefix, StringComparison.Ordinal))
-                    {
-                        if (!AddProcessFilters(options, arg[ProcessOptionPrefix.Length..])) return false;
-                    }
-                    else if (arg.StartsWith(PortOptionPrefix, StringComparison.Ordinal))
-                    {
-                        if (!AddPortFilters(options, arg[PortOptionPrefix.Length..])) return false;
-                    }
-                    else
-                    {
-                        return false;
-                    }
+                    if (!TryParseDefault(options, arg)) return false;
                     break;
             }
         }
         return true;
+    }
+
+    private static bool TryParseDefault(CommandLineOptions options, string arg)
+    {
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            return false;
+        }
+
+        if (arg.StartsWith(ProcessOptionPrefix, StringComparison.Ordinal))
+        {
+            return AddStringFilters(options.ProcessFilters, arg[ProcessOptionPrefix.Length..]);
+        }
+
+        if (arg.StartsWith(CommandOptionPrefix, StringComparison.Ordinal))
+        {
+            return AddStringFilters(options.ProcessFilters, arg[CommandOptionPrefix.Length..]);
+        }
+
+        if (arg.StartsWith(UserOptionPrefix, StringComparison.Ordinal))
+        {
+            return AddStringFilters(options.UserFilters, arg[UserOptionPrefix.Length..]);
+        }
+
+        if (arg.StartsWith(PortOptionPrefix, StringComparison.Ordinal))
+        {
+            return AddPortFilters(options, arg[PortOptionPrefix.Length..]);
+        }
+
+        // Unix form: "lsof -i:22" attaches the port spec directly to the switch.
+        if (arg.StartsWith(NetworkSwitchPrefix, StringComparison.Ordinal) && arg.Length > NetworkSwitchPrefix.Length)
+        {
+            options.Network = true;
+            return NetworkSpecParser.ParseNetworkSpec(options.PortFilters, arg[NetworkSwitchPrefix.Length..]);
+        }
+
+        // Any other non-option token is treated as a file path, matching "lsof /path/to/file".
+        if (!IsOptionToken(arg))
+        {
+            options.PathFilters.Add(arg);
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryReadSeparateValue(string[] args, ref int index, out string value)
@@ -104,20 +151,20 @@ internal sealed class CommandLineOptions
         return value.StartsWith('-') || value == "/?";
     }
 
-    private static bool AddProcessFilters(CommandLineOptions options, string value)
+    private static bool AddStringFilters(List<string> target, string value)
     {
-        int initialCount = options.ProcessFilters.Count;
+        int initialCount = target.Count;
         ReadOnlySpan<char> input = value.AsSpan();
         foreach (Range range in input.Split(','))
         {
             ReadOnlySpan<char> part = input[range].Trim();
             if (!part.IsEmpty)
             {
-                options.ProcessFilters.Add(part.ToString());
+                target.Add(part.ToString());
             }
         }
 
-        return options.ProcessFilters.Count > initialCount;
+        return target.Count > initialCount;
     }
 
     private static bool AddPortFilters(CommandLineOptions options, string value)
@@ -128,9 +175,7 @@ internal sealed class CommandLineOptions
         {
             ReadOnlySpan<char> part = input[range].Trim();
             if (part.IsEmpty) continue;
-            if (!int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port)) return false;
-            if (port < MinimumPort || port > MaximumPort) return false;
-            options.PortFilters.Add(port);
+            if (!NetworkSpecParser.TryAddPort(options.PortFilters, part)) return false;
         }
 
         return options.PortFilters.Count > initialCount;

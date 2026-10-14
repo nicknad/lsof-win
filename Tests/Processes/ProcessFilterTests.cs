@@ -117,4 +117,104 @@ public sealed class ProcessFilterTests
         Assert.Empty(selection.ProcessIds);
         Assert.Empty(report.Diagnostics);
     }
+
+    [Fact]
+    public void ResolveSelection_matches_processes_by_owner_account_name()
+    {
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(1, "one", "C:\\one.exe"),
+            new ProcessInfo(2, "two", "C:\\two.exe"));
+        CollectionReport report = new();
+        FakeOwnerProvider owners = new(new Dictionary<int, string>
+        {
+            [1] = "DOMAIN\\alice",
+            [2] = "DOMAIN\\bob"
+        });
+        ProcessFilter filter = new([], ["alice"], owners);
+
+        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+
+        Assert.False(selection.IncludesAllProcesses);
+        Assert.Contains(1, selection.ProcessIds);
+        Assert.DoesNotContain(2, selection.ProcessIds);
+        Assert.False(report.HasWarnings);
+    }
+
+    [Fact]
+    public void ResolveSelection_matches_domain_qualified_user_filters()
+    {
+        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(1, "one", "C:\\one.exe"));
+        CollectionReport report = new();
+        FakeOwnerProvider owners = new(new Dictionary<int, string> { [1] = "DOMAIN\\alice" });
+        ProcessFilter filter = new([], ["domain\\ALICE"], owners);
+
+        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+
+        Assert.Contains(1, selection.ProcessIds);
+    }
+
+    [Fact]
+    public void ResolveSelection_ors_process_name_and_user_filters()
+    {
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(1, "one", "C:\\one.exe"),
+            new ProcessInfo(2, "two", "C:\\two.exe"),
+            new ProcessInfo(3, "three", "C:\\three.exe"));
+        CollectionReport report = new();
+        FakeOwnerProvider owners = new(new Dictionary<int, string>
+        {
+            [1] = "DOMAIN\\bob",
+            [2] = "DOMAIN\\alice",
+            [3] = "DOMAIN\\carol"
+        });
+        ProcessFilter filter = new(["one"], ["alice"], owners);
+
+        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+
+        Assert.Contains(1, selection.ProcessIds);
+        Assert.Contains(2, selection.ProcessIds);
+        Assert.DoesNotContain(3, selection.ProcessIds);
+    }
+
+    [Fact]
+    public void ResolveSelection_reports_information_when_no_user_matches()
+    {
+        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(1, "one", "C:\\one.exe"));
+        CollectionReport report = new();
+        FakeOwnerProvider owners = new(new Dictionary<int, string> { [1] = "DOMAIN\\alice" });
+        ProcessFilter filter = new([], ["missing-user"], owners);
+
+        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+
+        Assert.True(selection.IsEmpty);
+        Assert.Contains("No running process matches: missing-user", Assert.Single(report.Diagnostics).Message);
+    }
+
+    [Fact]
+    public void ResolveSelection_skips_processes_whose_owner_cannot_be_resolved()
+    {
+        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(1, "one", "C:\\one.exe"));
+        CollectionReport report = new();
+        FakeOwnerProvider owners = new(new Dictionary<int, string>());
+        ProcessFilter filter = new([], ["alice"], owners);
+
+        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+
+        Assert.True(selection.IsEmpty);
+    }
+
+    private sealed class FakeOwnerProvider : IProcessOwnerProvider
+    {
+        private readonly Dictionary<int, string> _owners;
+
+        public FakeOwnerProvider(Dictionary<int, string> owners)
+        {
+            _owners = owners;
+        }
+
+        public string? GetOwner(int processId)
+        {
+            return _owners.TryGetValue(processId, out string? owner) ? owner : null;
+        }
+    }
 }

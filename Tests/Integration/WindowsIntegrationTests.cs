@@ -56,6 +56,17 @@ public sealed class WindowsIntegrationTests
     }
 
     [Fact]
+    public void Owner_provider_resolves_the_current_process_owner()
+    {
+        ProcessOwnerProvider provider = new();
+
+        string? owner = provider.GetOwner(Environment.ProcessId);
+
+        Assert.NotNull(owner);
+        Assert.Contains(Environment.UserName, owner, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Network_collection_finds_selected_ephemeral_sockets_and_excludes_unselected_ports()
     {
         HashSet<int> usedPorts = new();

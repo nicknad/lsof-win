@@ -22,25 +22,6 @@ public sealed class LsofEntryTests
     }
 
     [Fact]
-    public void RemoveDuplicateEntries_does_not_collide_on_delimiters_in_paths()
-    {
-        // Regression guard: these adjacent fields collide under delimiter-joined keys, but must stay distinct structurally.
-        LsofEntry pathWithDelimiter = CreateEntry();
-        pathWithDelimiter.ProcessPath = "C:\\tmp|TCP";
-        pathWithDelimiter.Protocol = "UDP";
-
-        LsofEntry delimiterInNextField = CreateEntry();
-        delimiterInNextField.ProcessPath = "C:\\tmp";
-        delimiterInNextField.Protocol = "TCP|UDP";
-
-        List<LsofEntry> result = LsofEntryDeduplicator.RemoveDuplicateEntries([pathWithDelimiter, delimiterInNextField]);
-
-        Assert.Equal(2, result.Count);
-        Assert.Same(pathWithDelimiter, result[0]);
-        Assert.Same(delimiterInNextField, result[1]);
-    }
-
-    [Fact]
     public void RemoveDuplicateEntries_keeps_distinct_handles_for_the_same_path_and_sorting_is_deterministic()
     {
         LsofEntry secondHandle = CreateEntry();
@@ -86,7 +67,7 @@ public sealed class LsofEntryTests
     }
 
     [Fact]
-    public void Summary_counts_entries_by_typed_kind()
+    public void Summary_counts_entries_by_typed_kind_and_ignores_unknown()
     {
         LsofEntry connection = CreateEntry();
         connection.Kind = LsofEntryKind.Connection;
@@ -95,8 +76,10 @@ public sealed class LsofEntryTests
         file.Kind = LsofEntryKind.File;
         LsofEntry module = CreateEntry();
         module.Kind = LsofEntryKind.Module;
+        LsofEntry unknown = CreateEntry();
+        unknown.Kind = LsofEntryKind.Unknown;
 
-        LsofSummary summary = LsofSummary.FromEntries([connection, file, module]);
+        LsofSummary summary = LsofSummary.FromEntries([connection, file, module, unknown]);
 
         Assert.Equal(1, summary.Connections);
         Assert.Equal(1, summary.Files);

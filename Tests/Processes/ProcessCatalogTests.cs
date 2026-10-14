@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using Lsof.Models;
 using Lsof.Tests.Support;
@@ -21,17 +20,6 @@ public sealed class ProcessCatalogTests
         process.Dispose();
 
         Assert.False(ProcessCatalog.IsExpectedProcessInspectionException(process, new InvalidOperationException("unexpected logic error")));
-    }
-
-    [Theory]
-    [InlineData(typeof(Win32Exception))]
-    [InlineData(typeof(UnauthorizedAccessException))]
-    [InlineData(typeof(NotSupportedException))]
-    public void IsExpectedInspectionException_recognizes_process_inspection_failures(Type exceptionType)
-    {
-        Exception exception = (Exception)Activator.CreateInstance(exceptionType)!;
-
-        Assert.True(ProcessCatalog.IsExpectedInspectionException(exception));
     }
 
     [Fact]

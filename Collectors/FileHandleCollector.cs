@@ -10,6 +10,7 @@ internal static class FileHandleCollector
     public static void Collect(
         ProcessCatalog catalog,
         ProcessSelection selection,
+        FileFilter fileFilter,
         List<LsofEntry> entries,
         CollectionReport report,
         Action<WindowsHandleApi.HandleScanProgress>? progress,
@@ -17,12 +18,13 @@ internal static class FileHandleCollector
     {
         // Production wiring: WindowsHandleApi enumerates the native handle table and IsElevated
         // checks the current token. Both are parameters so tests can inject fakes.
-        Collect(catalog, selection, entries, report, progress, WindowsHandleApi.EnumerateDiskFileHandles, IsElevated, cancellationToken);
+        Collect(catalog, selection, fileFilter, entries, report, progress, WindowsHandleApi.EnumerateDiskFileHandles, IsElevated, cancellationToken);
     }
 
     internal static void Collect(
         ProcessCatalog catalog,
         ProcessSelection selection,
+        FileFilter fileFilter,
         List<LsofEntry> entries,
         CollectionReport report,
         Action<WindowsHandleApi.HandleScanProgress>? progress,
@@ -50,6 +52,11 @@ internal static class FileHandleCollector
         foreach (WindowsHandleApi.OpenFileHandle handle in enumeration.Handles)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!fileFilter.Matches(handle.Path))
+            {
+                continue;
+            }
+
             LsofEntry entry = catalog.CreateEntry(handle.ProcessId);
             entry.Kind = LsofEntryKind.File;
             entry.Handle = "0x" + handle.Handle.ToString("x");

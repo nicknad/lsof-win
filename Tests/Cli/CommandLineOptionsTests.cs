@@ -69,7 +69,6 @@ public sealed class CommandLineOptionsTests
     [InlineData("--modules", "modules")]
     [InlineData("-a", "all")]
     [InlineData("--all", "all")]
-    [InlineData("-u", "unique")]
     [InlineData("--unique", "unique")]
     [InlineData("-j", "json")]
     [InlineData("--json", "json")]
@@ -153,6 +152,10 @@ public sealed class CommandLineOptionsTests
     [InlineData("--process")]
     [InlineData("-P")]
     [InlineData("--port")]
+    [InlineData("-c")]
+    [InlineData("--command")]
+    [InlineData("-u")]
+    [InlineData("--user")]
     public void TryParse_rejects_missing_filter_values(string option)
     {
         bool parsed = CommandLineOptions.TryParse([option], out _, out _);
@@ -212,5 +215,119 @@ public sealed class CommandLineOptionsTests
         bool parsed = CommandLineOptions.TryParse(["--bogus"], out _, out _);
 
         Assert.False(parsed);
+    }
+
+    [Theory]
+    [InlineData("-c")]
+    [InlineData("--command")]
+    public void TryParse_accepts_command_alias_as_a_process_filter(string option)
+    {
+        bool parsed = CommandLineOptions.TryParse([option, "bash"], out CommandLineOptions options, out bool showHelp);
+
+        Assert.True(parsed);
+        Assert.False(showHelp);
+        Assert.Equal("bash", Assert.Single(options.ProcessFilters));
+    }
+
+    [Fact]
+    public void TryParse_accepts_inline_command_form()
+    {
+        bool parsed = CommandLineOptions.TryParse(["--command=chrome"], out CommandLineOptions options, out _);
+
+        Assert.True(parsed);
+        Assert.Equal("chrome", Assert.Single(options.ProcessFilters));
+    }
+
+    [Theory]
+    [InlineData("-u")]
+    [InlineData("--user")]
+    public void TryParse_accepts_separate_user_aliases(string option)
+    {
+        bool parsed = CommandLineOptions.TryParse([option, "alice"], out CommandLineOptions options, out bool showHelp);
+
+        Assert.True(parsed);
+        Assert.False(showHelp);
+        Assert.Equal("alice", Assert.Single(options.UserFilters));
+        Assert.False(options.Unique);
+    }
+
+    [Fact]
+    public void TryParse_accepts_inline_user_form_and_splits_commas()
+    {
+        bool parsed = CommandLineOptions.TryParse(["--user= DOMAIN\\alice , bob "], out CommandLineOptions options, out _);
+
+        Assert.True(parsed);
+        Assert.Equal(["DOMAIN\\alice", "bob"], options.UserFilters);
+    }
+
+    [Fact]
+    public void TryParse_distinguishes_unique_flag_from_user_filter()
+    {
+        bool uniqueParsed = CommandLineOptions.TryParse(["--unique"], out CommandLineOptions uniqueOptions, out _);
+        bool userParsed = CommandLineOptions.TryParse(["-u", "alice"], out CommandLineOptions userOptions, out _);
+
+        Assert.True(uniqueParsed);
+        Assert.True(uniqueOptions.Unique);
+        Assert.Empty(uniqueOptions.UserFilters);
+        Assert.True(userParsed);
+        Assert.False(userOptions.Unique);
+        Assert.Equal(["alice"], userOptions.UserFilters);
+    }
+
+    [Theory]
+    [InlineData("-i:22", 22)]
+    [InlineData("-i:443,80", 443)]
+    public void TryParse_accepts_attached_network_port_spec(string option, int expectedPort)
+    {
+        bool parsed = CommandLineOptions.TryParse([option], out CommandLineOptions options, out _);
+
+        Assert.True(parsed);
+        Assert.True(options.Network);
+        Assert.Contains(expectedPort, options.PortFilters);
+    }
+
+    [Theory]
+    [InlineData(":22", 22)]
+    [InlineData("tcp:443", 443)]
+    [InlineData("80,443", 80)]
+    public void TryParse_accepts_separate_network_port_spec(string spec, int expectedPort)
+    {
+        bool parsed = CommandLineOptions.TryParse(["-i", spec], out CommandLineOptions options, out _);
+
+        Assert.True(parsed);
+        Assert.True(options.Network);
+        Assert.Contains(expectedPort, options.PortFilters);
+    }
+
+    [Fact]
+    public void TryParse_treats_network_switch_as_a_flag_when_the_next_token_is_an_option()
+    {
+        bool parsed = CommandLineOptions.TryParse(["-i", "--files"], out CommandLineOptions options, out _);
+
+        Assert.True(parsed);
+        Assert.True(options.Network);
+        Assert.True(options.Files);
+        Assert.Empty(options.PortFilters);
+    }
+
+    [Theory]
+    [InlineData("C:\\Windows\\notepad.exe")]
+    [InlineData("/pfad/zur/datei")]
+    public void TryParse_treats_bare_tokens_as_path_filters(string path)
+    {
+        bool parsed = CommandLineOptions.TryParse([path], out CommandLineOptions options, out _);
+
+        Assert.True(parsed);
+        Assert.Equal(path, Assert.Single(options.PathFilters));
+    }
+
+    [Fact]
+    public void TryParse_accepts_a_path_filter_combined_with_type_flags()
+    {
+        bool parsed = CommandLineOptions.TryParse(["-f", "C:\\temp\\a.txt"], out CommandLineOptions options, out _);
+
+        Assert.True(parsed);
+        Assert.True(options.Files);
+        Assert.Equal("C:\\temp\\a.txt", Assert.Single(options.PathFilters));
     }
 }

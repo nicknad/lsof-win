@@ -120,10 +120,13 @@ internal static class NetworkCollector
             return;
         }
 
-        CollectTable(TransportProtocol.Tcp, IpHelperApi.AfInet, catalog, selection, portFilters, entries, nativeApi, memoryAllocator, report, cancellationToken);
-        CollectTable(TransportProtocol.Tcp, IpHelperApi.AfInet6, catalog, selection, portFilters, entries, nativeApi, memoryAllocator, report, cancellationToken);
-        CollectTable(TransportProtocol.Udp, IpHelperApi.AfInet, catalog, selection, portFilters, entries, nativeApi, memoryAllocator, report, cancellationToken);
-        CollectTable(TransportProtocol.Udp, IpHelperApi.AfInet6, catalog, selection, portFilters, entries, nativeApi, memoryAllocator, report, cancellationToken);
+        (TransportProtocol Protocol, int Family)[] tables =
+        [
+            (TransportProtocol.Tcp, IpHelperApi.AfInet), (TransportProtocol.Tcp, IpHelperApi.AfInet6),
+            (TransportProtocol.Udp, IpHelperApi.AfInet), (TransportProtocol.Udp, IpHelperApi.AfInet6),
+        ];
+        foreach ((TransportProtocol protocol, int family) in tables)
+            CollectTable(protocol, family, catalog, selection, portFilters, entries, nativeApi, memoryAllocator, report, cancellationToken);
     }
 
     private static void CollectTable(
@@ -269,11 +272,7 @@ internal static class NetworkCollector
     private static bool MatchesPort(IReadOnlyList<int> ports, int localPort, int remotePort, bool hasRemotePort)
     {
         if (ports.Count == 0) return true;
-        for (int i = 0; i < ports.Count; i++)
-        {
-            if (ports[i] == localPort || (hasRemotePort && ports[i] == remotePort)) return true;
-        }
-        return false;
+        return ports.Contains(localPort) || (hasRemotePort && ports.Contains(remotePort));
     }
 
     private static bool TryReadRowCount(IntPtr buffer, int bufferSize, int rowSize, CollectionReport report, out int count)
@@ -408,12 +407,7 @@ internal static class NetworkCollector
     private static void WarnTableQueryFailure(TransportProtocol protocol, int family, uint error, CollectionReport report)
     {
         string addressFamily = family == IpHelperApi.AfInet ? "IPv4" : "IPv6";
-        string protocolName = protocol switch
-        {
-            TransportProtocol.Tcp => "TCP",
-            TransportProtocol.Udp => "UDP",
-            _ => protocol.ToString()
-        };
+        string protocolName = protocol == TransportProtocol.Tcp ? "TCP" : "UDP";
         report.AddWarning($"Warning: unable to read the {addressFamily} {protocolName} table (Windows error {error}).");
     }
 
@@ -447,21 +441,7 @@ internal static class NetworkCollector
 
     private static string TcpStateName(int state)
     {
-        return (MibTcpState)state switch
-        {
-            MibTcpState.Closed => "Closed",
-            MibTcpState.Listen => "Listen",
-            MibTcpState.SynSent => "SynSent",
-            MibTcpState.SynReceived => "SynReceived",
-            MibTcpState.Established => "Established",
-            MibTcpState.FinWait1 => "FinWait1",
-            MibTcpState.FinWait2 => "FinWait2",
-            MibTcpState.CloseWait => "CloseWait",
-            MibTcpState.Closing => "Closing",
-            MibTcpState.LastAck => "LastAck",
-            MibTcpState.TimeWait => "TimeWait",
-            MibTcpState.DeleteTcb => "DeleteTcb",
-            _ => "Unknown"
-        };
+        // Enum names match the display strings; only guard unknown values.
+        return Enum.IsDefined(typeof(MibTcpState), state) ? ((MibTcpState)state).ToString() : "Unknown";
     }
 }

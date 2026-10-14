@@ -57,6 +57,28 @@ public sealed class ProgramTests
     }
 
     [Fact]
+    public void ApplyDefaultCollectors_selects_files_only_when_a_path_filter_is_present()
+    {
+        Assert.True(CommandLineOptions.TryParse(["C:\\temp\\a.txt"], out CommandLineOptions options, out _));
+
+        Program.ApplyDefaultCollectors(options);
+
+        Assert.True(options.Files);
+        Assert.False(options.Network);
+    }
+
+    [Fact]
+    public void ApplyDefaultCollectors_preserves_an_explicit_network_selection_with_a_path_filter()
+    {
+        Assert.True(CommandLineOptions.TryParse(["--network", "C:\\temp\\a.txt"], out CommandLineOptions options, out _));
+
+        Program.ApplyDefaultCollectors(options);
+
+        Assert.True(options.Network);
+        Assert.False(options.Files);
+    }
+
+    [Fact]
     public void Run_returns_one_for_unknown_arguments()
     {
         Assert.Equal(1, Program.Run(["--bogus"], TestContext.Current.CancellationToken));
