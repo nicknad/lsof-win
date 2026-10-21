@@ -11,10 +11,23 @@ internal interface IProcessOwnerNativeApi
     bool OpenProcessToken(IntPtr processHandle, uint desiredAccess, out IntPtr tokenHandle);
 
     // advapi32!GetTokenInformation: copies the requested token information into a caller buffer.
-    bool GetTokenInformation(IntPtr tokenHandle, int informationClass, IntPtr information, int informationLength, out int returnLength);
+    bool GetTokenInformation(
+        IntPtr tokenHandle,
+        int informationClass,
+        IntPtr information,
+        int informationLength,
+        out int returnLength
+    );
 
     // advapi32!LookupAccountSidW: resolves a SID to its account and domain names.
-    bool LookupAccountSid(IntPtr sid, char[] name, ref int nameLength, char[] domain, ref int domainLength, out int sidNameUse);
+    bool LookupAccountSid(
+        IntPtr sid,
+        char[] name,
+        ref int nameLength,
+        char[] domain,
+        ref int domainLength,
+        out int sidNameUse
+    );
 
     // kernel32!CloseHandle: releases a kernel object handle.
     bool CloseHandle(IntPtr handle);

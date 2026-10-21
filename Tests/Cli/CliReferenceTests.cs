@@ -19,22 +19,28 @@ public sealed class CliReferenceTests
             Console.SetOut(original);
         }
 
-        string expected = string.Join(Environment.NewLine, CliReference.Lines) + Environment.NewLine;
+        string expected =
+            string.Join(Environment.NewLine, CliReference.Lines) + Environment.NewLine;
         Assert.Equal(expected, writer.ToString());
     }
 
     [Fact]
     public void Readme_contains_the_canonical_options_block()
     {
-        string readmePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../README.md"));
+        string readmePath = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "../../../../README.md")
+        );
         Assert.True(File.Exists(readmePath), $"README not found at {readmePath}");
         string readme = File.ReadAllText(readmePath);
 
-        foreach (string line in CliReference.Lines.Where(static l =>
-            l.StartsWith("  -", StringComparison.Ordinal) ||
-            l.StartsWith("      ", StringComparison.Ordinal) ||
-            l.StartsWith("  <", StringComparison.Ordinal) ||
-            l.StartsWith("                            ", StringComparison.Ordinal)))
+        foreach (
+            string line in CliReference.Lines.Where(static l =>
+                l.StartsWith("  -", StringComparison.Ordinal)
+                || l.StartsWith("      ", StringComparison.Ordinal)
+                || l.StartsWith("  <", StringComparison.Ordinal)
+                || l.StartsWith("                            ", StringComparison.Ordinal)
+            )
+        )
         {
             Assert.Contains(line, readme, StringComparison.Ordinal);
         }

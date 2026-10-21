@@ -8,7 +8,11 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_accepts_empty_argument_list()
     {
-        bool parsed = CommandLineOptions.TryParse([], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            [],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -21,7 +25,11 @@ public sealed class CommandLineOptionsTests
     [InlineData("--process")]
     public void TryParse_accepts_separate_process_aliases(string option)
     {
-        bool parsed = CommandLineOptions.TryParse([option, "alpha"], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            [option, "alpha"],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -31,7 +39,11 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_accepts_inline_process_form()
     {
-        bool parsed = CommandLineOptions.TryParse(["--process=gamma"], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            ["--process=gamma"],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -43,7 +55,11 @@ public sealed class CommandLineOptionsTests
     [InlineData("--port")]
     public void TryParse_accepts_separate_port_aliases(string option)
     {
-        bool parsed = CommandLineOptions.TryParse([option, "443"], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            [option, "443"],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -53,7 +69,11 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_accepts_inline_port_form()
     {
-        bool parsed = CommandLineOptions.TryParse(["--port=8080"], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            ["--port=8080"],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -74,7 +94,11 @@ public sealed class CommandLineOptionsTests
     [InlineData("--json", "json")]
     public void TryParse_sets_each_switch_alias(string option, string expectedFlag)
     {
-        bool parsed = CommandLineOptions.TryParse([option], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            [option],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -88,11 +112,7 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_splits_comma_separated_values_trims_whitespace_and_skips_empty_segments()
     {
-        string[] args =
-        [
-            "--process=  alpha , , beta, ",
-            "--port", " 80 , , 443 , "
-        ];
+        string[] args = ["--process=  alpha , , beta, ", "--port", " 80 , , 443 , "];
 
         bool parsed = CommandLineOptions.TryParse(args, out CommandLineOptions options, out _);
 
@@ -106,7 +126,11 @@ public sealed class CommandLineOptionsTests
     [InlineData(65535)]
     public void TryParse_accepts_port_bounds(int port)
     {
-        bool parsed = CommandLineOptions.TryParse(["--port", port.ToString(CultureInfo.InvariantCulture)], out CommandLineOptions options, out _);
+        bool parsed = CommandLineOptions.TryParse(
+            ["--port", port.ToString(CultureInfo.InvariantCulture)],
+            out CommandLineOptions options,
+            out _
+        );
 
         Assert.True(parsed);
         Assert.Equal([port], options.PortFilters);
@@ -168,7 +192,10 @@ public sealed class CommandLineOptionsTests
     [InlineData("--process", "-j")]
     [InlineData("-P", "--json")]
     [InlineData("--port", "/?")]
-    public void TryParse_rejects_option_tokens_as_separate_filter_values(string option, string value)
+    public void TryParse_rejects_option_tokens_as_separate_filter_values(
+        string option,
+        string value
+    )
     {
         bool parsed = CommandLineOptions.TryParse([option, value], out _, out _);
 
@@ -179,7 +206,11 @@ public sealed class CommandLineOptionsTests
     public void TryParse_accepts_option_looking_process_values_in_inline_form()
     {
         string[] args = ["--process=--json"];
-        bool parsed = CommandLineOptions.TryParse(args, out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            args,
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -202,7 +233,11 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_help_short_circuits_later_arguments()
     {
-        bool parsed = CommandLineOptions.TryParse(["-i", "--help", "--bogus"], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            ["-i", "--help", "--bogus"],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.True(showHelp);
@@ -222,7 +257,11 @@ public sealed class CommandLineOptionsTests
     [InlineData("--command")]
     public void TryParse_accepts_command_alias_as_a_process_filter(string option)
     {
-        bool parsed = CommandLineOptions.TryParse([option, "bash"], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            [option, "bash"],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -232,7 +271,11 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_accepts_inline_command_form()
     {
-        bool parsed = CommandLineOptions.TryParse(["--command=chrome"], out CommandLineOptions options, out _);
+        bool parsed = CommandLineOptions.TryParse(
+            ["--command=chrome"],
+            out CommandLineOptions options,
+            out _
+        );
 
         Assert.True(parsed);
         Assert.Equal("chrome", Assert.Single(options.ProcessFilters));
@@ -243,7 +286,11 @@ public sealed class CommandLineOptionsTests
     [InlineData("--user")]
     public void TryParse_accepts_separate_user_aliases(string option)
     {
-        bool parsed = CommandLineOptions.TryParse([option, "alice"], out CommandLineOptions options, out bool showHelp);
+        bool parsed = CommandLineOptions.TryParse(
+            [option, "alice"],
+            out CommandLineOptions options,
+            out bool showHelp
+        );
 
         Assert.True(parsed);
         Assert.False(showHelp);
@@ -254,7 +301,11 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_accepts_inline_user_form_and_splits_commas()
     {
-        bool parsed = CommandLineOptions.TryParse(["--user= DOMAIN\\alice , bob "], out CommandLineOptions options, out _);
+        bool parsed = CommandLineOptions.TryParse(
+            ["--user= DOMAIN\\alice , bob "],
+            out CommandLineOptions options,
+            out _
+        );
 
         Assert.True(parsed);
         Assert.Equal(["DOMAIN\\alice", "bob"], options.UserFilters);
@@ -263,8 +314,16 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_distinguishes_unique_flag_from_user_filter()
     {
-        bool uniqueParsed = CommandLineOptions.TryParse(["--unique"], out CommandLineOptions uniqueOptions, out _);
-        bool userParsed = CommandLineOptions.TryParse(["-u", "alice"], out CommandLineOptions userOptions, out _);
+        bool uniqueParsed = CommandLineOptions.TryParse(
+            ["--unique"],
+            out CommandLineOptions uniqueOptions,
+            out _
+        );
+        bool userParsed = CommandLineOptions.TryParse(
+            ["-u", "alice"],
+            out CommandLineOptions userOptions,
+            out _
+        );
 
         Assert.True(uniqueParsed);
         Assert.True(uniqueOptions.Unique);
@@ -292,7 +351,11 @@ public sealed class CommandLineOptionsTests
     [InlineData("80,443", 80)]
     public void TryParse_accepts_separate_network_port_spec(string spec, int expectedPort)
     {
-        bool parsed = CommandLineOptions.TryParse(["-i", spec], out CommandLineOptions options, out _);
+        bool parsed = CommandLineOptions.TryParse(
+            ["-i", spec],
+            out CommandLineOptions options,
+            out _
+        );
 
         Assert.True(parsed);
         Assert.True(options.Network);
@@ -302,7 +365,11 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_treats_network_switch_as_a_flag_when_the_next_token_is_an_option()
     {
-        bool parsed = CommandLineOptions.TryParse(["-i", "--files"], out CommandLineOptions options, out _);
+        bool parsed = CommandLineOptions.TryParse(
+            ["-i", "--files"],
+            out CommandLineOptions options,
+            out _
+        );
 
         Assert.True(parsed);
         Assert.True(options.Network);
@@ -324,7 +391,11 @@ public sealed class CommandLineOptionsTests
     [Fact]
     public void TryParse_accepts_a_path_filter_combined_with_type_flags()
     {
-        bool parsed = CommandLineOptions.TryParse(["-f", "C:\\temp\\a.txt"], out CommandLineOptions options, out _);
+        bool parsed = CommandLineOptions.TryParse(
+            ["-f", "C:\\temp\\a.txt"],
+            out CommandLineOptions options,
+            out _
+        );
 
         Assert.True(parsed);
         Assert.True(options.Files);

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Lsof.Models;
-using Lsof.Tests.Support;
 using Lsof.Processes;
+using Lsof.Tests.Support;
 
 namespace Lsof.Tests.Processes;
 
@@ -10,7 +10,11 @@ public sealed class ProcessCatalogTests
     [Fact]
     public void IsExpectedInspectionException_does_not_swallow_general_invalid_operation_errors()
     {
-        Assert.False(ProcessCatalog.IsExpectedInspectionException(new InvalidOperationException("unexpected logic error")));
+        Assert.False(
+            ProcessCatalog.IsExpectedInspectionException(
+                new InvalidOperationException("unexpected logic error")
+            )
+        );
     }
 
     [Fact]
@@ -19,13 +23,20 @@ public sealed class ProcessCatalogTests
         Process process = Process.GetCurrentProcess();
         process.Dispose();
 
-        Assert.False(ProcessCatalog.IsExpectedProcessInspectionException(process, new InvalidOperationException("unexpected logic error")));
+        Assert.False(
+            ProcessCatalog.IsExpectedProcessInspectionException(
+                process,
+                new InvalidOperationException("unexpected logic error")
+            )
+        );
     }
 
     [Fact]
     public void CreateEntry_uses_system_and_pid_fallbacks()
     {
-        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(123, "", "C:\\hidden.exe"));
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(123, "", "C:\\hidden.exe")
+        );
 
         LsofEntry idle = catalog.CreateEntry(0);
         Assert.Equal("Idle", idle.ProcessName);

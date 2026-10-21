@@ -1,7 +1,6 @@
 using Lsof.Cli;
 using Lsof.Collectors;
 using Lsof.Models;
-using Lsof.Native;
 using Lsof.Output;
 using Lsof.Processes;
 
@@ -18,12 +17,13 @@ internal static class Program
         using CancellationTokenSource cancellation = new();
         // Console.CancelKeyPress fires on Ctrl+C; setting eventArgs.Cancel keeps the process alive so
         // the collectors can stop cooperatively through the token and return the cancelled exit code.
-        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
+        void CancelHandler(object? sender, ConsoleCancelEventArgs eventArgs)
         {
             eventArgs.Cancel = true;
             cancellation.Cancel();
-        };
-        Console.CancelKeyPress += cancelHandler;
+        }
+
+        Console.CancelKeyPress += CancelHandler;
 
         try
         {
@@ -31,7 +31,7 @@ internal static class Program
         }
         finally
         {
-            Console.CancelKeyPress -= cancelHandler;
+            Console.CancelKeyPress -= CancelHandler;
         }
     }
 
@@ -66,13 +66,24 @@ internal static class Program
 
         CollectionReport report = new();
         using ProcessCatalog catalog = ProcessCatalog.Create(report, cancellationToken);
-        ProcessFilter filter = new(options.ProcessFilters, options.UserFilters, CreateOwnerProvider(options));
+        ProcessFilter filter = new(
+            options.ProcessFilters,
+            options.UserFilters,
+            CreateOwnerProvider(options)
+        );
         ProcessSelection selection = filter.ResolveSelection(catalog, report, cancellationToken);
 
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         if (options.Network)
         {
-            NetworkCollector.Collect(catalog, selection, options.PortFilters, entries, report, cancellationToken);
+            NetworkCollector.Collect(
+                catalog,
+                selection,
+                options.PortFilters,
+                entries,
+                report,
+                cancellationToken
+            );
         }
         if (options.Files)
         {
@@ -87,9 +98,12 @@ internal static class Program
                 new FileFilter(options.PathFilters),
                 entries,
                 report,
-                progress => Console.Error.WriteLine(
-                    $"Enumerated {progress.ProcessedHandles:N0}/{progress.TotalHandles:N0} handles; found {progress.FilesFound:N0} disk files."),
-                cancellationToken);
+                progress =>
+                    Console.Error.WriteLine(
+                        $"Enumerated {progress.ProcessedHandles:N0}/{progress.TotalHandles:N0} handles; found {progress.FilesFound:N0} disk files."
+                    ),
+                cancellationToken
+            );
         }
         if (options.Modules)
         {
@@ -118,7 +132,9 @@ internal static class Program
 
             LsofSummary summary = LsofSummary.FromEntries(entries);
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"{summary.Connections} connection(s), {summary.Files} file handle(s), {summary.Modules} module(s)");
+            Console.WriteLine(
+                $"{summary.Connections} connection(s), {summary.Files} file handle(s), {summary.Modules} module(s)"
+            );
             Console.ResetColor();
         }
 

@@ -8,7 +8,7 @@ internal static class TestCatalogFactory
     public static ProcessCatalog Create(params ProcessInfo[] processInfos)
     {
         Dictionary<int, ProcessInfo> byId = processInfos.ToDictionary(info => info.ProcessId);
-        return new ProcessCatalog(Array.Empty<Process>(), byId);
+        return new ProcessCatalog([], byId);
     }
 
     public static ProcessCatalog CreateWithProcess(Process process)
@@ -16,7 +16,7 @@ internal static class TestCatalogFactory
         int processId = process.Id;
         Dictionary<int, ProcessInfo> byId = new()
         {
-            [processId] = new ProcessInfo(processId, process.ProcessName, "")
+            [processId] = new ProcessInfo(processId, process.ProcessName, ""),
         };
         return new ProcessCatalog([process], byId);
     }

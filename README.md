@@ -70,3 +70,17 @@ dotnet build .\lsof.csproj -c Release
 dotnet publish .\lsof.csproj -c Release -r win-x64
 dotnet test .\Tests\Lsof.Tests.csproj
 ```
+
+## Format and lint
+
+Shared style lives in `.editorconfig` (CRLF, 4 spaces, file-scoped namespaces,
+explicit types, braceless single-statement guards). `CSharpier` is the formatter;
+Roslyn analyzers (`latest-recommended`, style enforced in build) are the linter.
+Both run as build errors, so run these before pushing:
+
+```powershell
+csharpier format .   # install once: dotnet tool install --global csharpier
+csharpier check .
+dotnet build .\lsof.csproj -c Release
+dotnet test .\Tests\Lsof.Tests.csproj
+```

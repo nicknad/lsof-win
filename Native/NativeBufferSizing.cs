@@ -9,9 +9,8 @@ internal static class NativeBufferSizing
             return 0;
         }
 
-        long nextSize = requiredSize > currentSize
-            ? (long)requiredSize + growth
-            : (long)currentSize * 2;
+        long nextSize =
+            requiredSize > currentSize ? (long)requiredSize + growth : (long)currentSize * 2;
         nextSize = Math.Min(nextSize, maximumSize);
         return nextSize > currentSize ? (int)nextSize : 0;
     }

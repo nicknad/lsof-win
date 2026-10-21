@@ -41,22 +41,34 @@ internal static class WindowsHandleApi
         public string Path { get; init; } = "";
     }
 
-    internal readonly record struct HandleScanProgress(long ProcessedHandles, long TotalHandles, int FilesFound);
+    internal readonly record struct HandleScanProgress(
+        long ProcessedHandles,
+        long TotalHandles,
+        int FilesFound
+    );
 
     internal sealed record EnumerationResult(OpenFileHandle[] Handles, string[] Warnings);
 
     internal delegate EnumerationResult HandleEnumerator(
         ProcessSelection selection,
         Action<HandleScanProgress>? progress,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
     private static readonly IWindowsHandleNativeApi NativeApi = new WindowsHandleNativeApi();
 
     public static EnumerationResult EnumerateDiskFileHandles(
         ProcessSelection selection,
         Action<HandleScanProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        return EnumerateDiskFileHandles(selection, NativeApi, HGlobalMemoryAllocator.Instance, progress, cancellationToken);
+        return EnumerateDiskFileHandles(
+            selection,
+            NativeApi,
+            HGlobalMemoryAllocator.Instance,
+            progress,
+            cancellationToken
+        );
     }
 
     internal static EnumerationResult EnumerateDiskFileHandles(
@@ -64,22 +76,29 @@ internal static class WindowsHandleApi
         IWindowsHandleNativeApi nativeApi,
         INativeMemoryAllocator memoryAllocator,
         Action<HandleScanProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (selection.IsEmpty)
         {
-            return new EnumerationResult(Array.Empty<OpenFileHandle>(), Array.Empty<string>());
+            return new EnumerationResult([], []);
         }
 
-        List<OpenFileHandle> results = new();
-        List<string> warnings = new();
-        Dictionary<int, IntPtr> processHandlesById = new();
-        IntPtr buffer = QuerySystemHandleTable(nativeApi, memoryAllocator, out int bufferSize, warnings, cancellationToken);
+        List<OpenFileHandle> results = [];
+        List<string> warnings = [];
+        Dictionary<int, IntPtr> processHandlesById = [];
+        IntPtr buffer = QuerySystemHandleTable(
+            nativeApi,
+            memoryAllocator,
+            out int bufferSize,
+            warnings,
+            cancellationToken
+        );
         if (buffer == IntPtr.Zero)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return new EnumerationResult(results.ToArray(), warnings.ToArray());
+            return new EnumerationResult([.. results], [.. warnings]);
         }
 
         OpenFileHandle[] handles;
@@ -87,7 +106,16 @@ internal static class WindowsHandleApi
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (TryGetHandleEntries(buffer, bufferSize, out long count, out int entrySize, out IntPtr entryPointer, out string? warning))
+            if (
+                TryGetHandleEntries(
+                    buffer,
+                    bufferSize,
+                    out long count,
+                    out int entrySize,
+                    out IntPtr entryPointer,
+                    out string? warning
+                )
+            )
             {
                 IntPtr currentProcess = nativeApi.GetCurrentProcess(); // Pseudo-handle of this process; target for duplicated handles.
 
@@ -95,13 +123,19 @@ internal static class WindowsHandleApi
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     // Marshal one native SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX row into managed form, then advance the cursor.
-                    SystemHandleEntry entry = Marshal.PtrToStructure<SystemHandleEntry>(entryPointer);
+                    SystemHandleEntry entry = Marshal.PtrToStructure<SystemHandleEntry>(
+                        entryPointer
+                    );
                     entryPointer = IntPtr.Add(entryPointer, entrySize);
 
                     int processId = unchecked((int)entry.UniqueProcessId.ToInt64());
                     if (selection.Includes(processId))
                     {
-                        IntPtr processHandle = GetProcessHandle(nativeApi, processHandlesById, processId);
+                        IntPtr processHandle = GetProcessHandle(
+                            nativeApi,
+                            processHandlesById,
+                            processId
+                        );
                         if (processHandle == IntPtr.Zero)
                         {
                             skippedHandleCount++;
@@ -115,7 +149,8 @@ internal static class WindowsHandleApi
                                 processId,
                                 nativeApi,
                                 warnings,
-                                out bool inspectionFailed);
+                                out bool inspectionFailed
+                            );
                             if (inspectionFailed)
                             {
                                 skippedHandleCount++;
@@ -133,7 +168,9 @@ internal static class WindowsHandleApi
                     long processedHandles = i + 1;
                     if (processedHandles % 256 == 0 || processedHandles == count)
                     {
-                        progress?.Invoke(new HandleScanProgress(processedHandles, count, results.Count));
+                        progress?.Invoke(
+                            new HandleScanProgress(processedHandles, count, results.Count)
+                        );
                     }
                 }
 
@@ -146,15 +183,17 @@ internal static class WindowsHandleApi
 
                 if (skippedHandleCount > 0)
                 {
-                    warnings.Add($"Warning: could not inspect {skippedHandleCount} matching system handle(s).");
+                    warnings.Add(
+                        $"Warning: could not inspect {skippedHandleCount} matching system handle(s)."
+                    );
                 }
 
-                handles = results.ToArray();
+                handles = [.. results];
             }
             else
             {
                 warnings.Add(warning!);
-                handles = Array.Empty<OpenFileHandle>();
+                handles = [];
             }
         }
         finally
@@ -170,7 +209,7 @@ internal static class WindowsHandleApi
             }
         }
 
-        return new EnumerationResult(handles, warnings.ToArray());
+        return new EnumerationResult(handles, [.. warnings]);
     }
 
     private static IntPtr QuerySystemHandleTable(
@@ -178,7 +217,8 @@ internal static class WindowsHandleApi
         INativeMemoryAllocator memoryAllocator,
         out int bufferSize,
         List<string> warnings,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         bufferSize = InitialHandleBufferSize;
         IntPtr buffer = IntPtr.Zero;
@@ -192,7 +232,12 @@ internal static class WindowsHandleApi
                 cancellationToken.ThrowIfCancellationRequested();
                 buffer = memoryAllocator.Allocate(bufferSize);
                 // Ask the kernel to fill the buffer with the system-wide handle table; requiredSize receives the bytes needed.
-                status = nativeApi.QuerySystemInformation(SystemExtendedHandleInformation, buffer, bufferSize, out requiredSize);
+                status = nativeApi.QuerySystemInformation(
+                    SystemExtendedHandleInformation,
+                    buffer,
+                    bufferSize,
+                    out requiredSize
+                );
                 cancellationToken.ThrowIfCancellationRequested();
                 if (status != StatusInfoLengthMismatch)
                 {
@@ -206,7 +251,8 @@ internal static class WindowsHandleApi
                     bufferSize,
                     requiredSize,
                     MaximumHandleBufferSize,
-                    HandleBufferGrowth);
+                    HandleBufferGrowth
+                );
                 if (nextBufferSize == 0)
                 {
                     break;
@@ -239,7 +285,9 @@ internal static class WindowsHandleApi
 
         if (status == StatusInfoLengthMismatch)
         {
-            warnings.Add("Warning: the system handle table exceeded the query retry or memory limit.");
+            warnings.Add(
+                "Warning: the system handle table exceeded the query retry or memory limit."
+            );
         }
         else if (status != StatusSuccess)
         {
@@ -261,10 +309,20 @@ internal static class WindowsHandleApi
         out long count,
         out int entrySize,
         out IntPtr entryPointer,
-        out string? warning)
+        out string? warning
+    )
     {
         // Marshal.SizeOf gives the expected native row size used to validate the returned table.
-        return TryGetHandleEntries(buffer, bufferSize, IntPtr.Size, Marshal.SizeOf<SystemHandleEntry>(), out count, out entrySize, out entryPointer, out warning);
+        return TryGetHandleEntries(
+            buffer,
+            bufferSize,
+            IntPtr.Size,
+            Marshal.SizeOf<SystemHandleEntry>(),
+            out count,
+            out entrySize,
+            out entryPointer,
+            out warning
+        );
     }
 
     internal static bool TryGetHandleEntries(
@@ -275,7 +333,8 @@ internal static class WindowsHandleApi
         out long count,
         out int entrySize,
         out IntPtr entryPointer,
-        out string? warning)
+        out string? warning
+    )
     {
         long headerSize = pointerSize * 2L; // ULONG_PTR handle count followed by ULONG_PTR reserved.
         entrySize = rowSize;
@@ -308,7 +367,11 @@ internal static class WindowsHandleApi
         return true;
     }
 
-    private static IntPtr GetProcessHandle(IWindowsHandleNativeApi nativeApi, Dictionary<int, IntPtr> processHandlesById, int processId)
+    private static IntPtr GetProcessHandle(
+        IWindowsHandleNativeApi nativeApi,
+        Dictionary<int, IntPtr> processHandlesById,
+        int processId
+    )
     {
         if (!processHandlesById.TryGetValue(processId, out IntPtr processHandle))
         {
@@ -328,12 +391,23 @@ internal static class WindowsHandleApi
         int processId,
         IWindowsHandleNativeApi nativeApi,
         List<string> warnings,
-        out bool inspectionFailed)
+        out bool inspectionFailed
+    )
     {
         inspectionFailed = false;
         // DuplicateHandle copies the target process's handle into this process so the object can be queried.
         // Desired access is ignored when DUPLICATE_SAME_ACCESS is set.
-        if (!nativeApi.DuplicateHandle(processHandle, entry.HandleValue, currentProcess, out IntPtr duplicate, 0, false, DuplicateSameAccess))
+        if (
+            !nativeApi.DuplicateHandle(
+                processHandle,
+                entry.HandleValue,
+                currentProcess,
+                out IntPtr duplicate,
+                0,
+                false,
+                DuplicateSameAccess
+            )
+        )
         {
             inspectionFailed = true;
             return null;
@@ -360,7 +434,7 @@ internal static class WindowsHandleApi
             {
                 ProcessId = processId,
                 Handle = entry.HandleValue.ToInt64(),
-                Path = path
+                Path = path,
             };
         }
         finally
@@ -375,7 +449,7 @@ internal static class WindowsHandleApi
         char[] buffer = new char[InitialFinalPathBufferSize];
         // GetFinalPathNameByHandle fills the buffer and returns the required character count.
         uint length = nativeApi.GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Length, 0); // Zero flags request a normalized DOS path.
-        if (length == 0 || length > MaximumFinalPathLength)
+        if (length is 0 or > MaximumFinalPathLength)
         {
             return null;
         }
@@ -402,7 +476,11 @@ internal static class WindowsHandleApi
         return path;
     }
 
-    private static void CloseHandleIfOpen(IWindowsHandleNativeApi nativeApi, IntPtr handle, List<string> warnings)
+    private static void CloseHandleIfOpen(
+        IWindowsHandleNativeApi nativeApi,
+        IntPtr handle,
+        List<string> warnings
+    )
     {
         // CloseHandle releases the kernel handle; a failure is only reported as a warning.
         if (handle != IntPtr.Zero && !nativeApi.CloseHandle(handle))

@@ -10,7 +10,11 @@ public sealed class TableFormatterTests
     [InlineData("fe80::1%9", 53, "[fe80::1%9]:53")]
     [InlineData("", 80, "")]
     [InlineData("::1", 0, "")]
-    public void FormatEndpoint_uses_address_syntax_to_bracket_ipv6(string address, int port, string expected)
+    public void FormatEndpoint_uses_address_syntax_to_bracket_ipv6(
+        string address,
+        int port,
+        string expected
+    )
     {
         Assert.Equal(expected, TableFormatter.FormatEndpoint(address, port));
     }

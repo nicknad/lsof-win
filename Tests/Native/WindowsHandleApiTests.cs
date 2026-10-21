@@ -38,7 +38,8 @@ public sealed class WindowsHandleApiTests
                 out long count,
                 out int actualRowSize,
                 out IntPtr entryPointer,
-                out string? warning);
+                out string? warning
+            );
 
             Assert.True(valid);
             Assert.Equal(1, count);
@@ -69,7 +70,8 @@ public sealed class WindowsHandleApiTests
                 out _,
                 out _,
                 out _,
-                out string? warning);
+                out string? warning
+            );
 
             Assert.False(valid);
             Assert.Contains("truncated handle table", warning);
@@ -85,7 +87,10 @@ public sealed class WindowsHandleApiTests
     [InlineData(4, 2)]
     [InlineData(8, -1)]
     [InlineData(8, 2)]
-    public void TryGetHandleEntries_rejects_negative_and_oversized_row_counts(int pointerSize, int rowCount)
+    public void TryGetHandleEntries_rejects_negative_and_oversized_row_counts(
+        int pointerSize,
+        int rowCount
+    )
     {
         const int rowSize = 16;
         int headerSize = pointerSize * 2;
@@ -103,7 +108,8 @@ public sealed class WindowsHandleApiTests
                 out _,
                 out _,
                 out _,
-                out string? warning);
+                out string? warning
+            );
 
             Assert.False(valid);
             Assert.Contains("invalid handle-table size", warning);
@@ -120,12 +126,12 @@ public sealed class WindowsHandleApiTests
         byte[] table = CreateSingleHandleTable(FixtureProcessId, FixtureHandle);
         FakeWindowsHandleNativeApi nativeApi = new()
         {
-            SystemInformationHandler = (int _, IntPtr buffer, int _, out int returnLength) =>
+            SystemInformationHandler = (_, buffer, _, out returnLength) =>
             {
                 Marshal.Copy(table, 0, buffer, table.Length);
                 returnLength = table.Length;
                 return StatusSuccess;
-            }
+            },
         };
 
         using TrackingNativeBufferAllocator memory = new();
@@ -133,7 +139,8 @@ public sealed class WindowsHandleApiTests
             ProcessSelection.FromProcessIds([FixtureProcessId]),
             nativeApi,
             memory,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         WindowsHandleApi.OpenFileHandle handle = Assert.Single(result.Handles);
         Assert.Equal(FixtureProcessId, handle.ProcessId);
@@ -141,7 +148,10 @@ public sealed class WindowsHandleApiTests
         Assert.Equal("C:\\fixture.txt", handle.Path);
         Assert.Equal(new[] { FixtureProcessId }, nativeApi.OpenedProcessIds);
         Assert.Equal(2, nativeApi.ClosedHandles.Count);
-        Assert.Equal(Marshal.SizeOf<WindowsHandleApi.SystemHandleEntry>(), IntPtr.Size == 8 ? 40 : 28);
+        Assert.Equal(
+            Marshal.SizeOf<WindowsHandleApi.SystemHandleEntry>(),
+            IntPtr.Size == 8 ? 40 : 28
+        );
         Assert.Empty(result.Warnings);
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
@@ -157,7 +167,8 @@ public sealed class WindowsHandleApiTests
             ProcessSelection.FromProcessIds([]),
             nativeApi,
             memory,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(result.Handles);
         Assert.Empty(result.Warnings);
@@ -170,11 +181,11 @@ public sealed class WindowsHandleApiTests
     {
         FakeWindowsHandleNativeApi nativeApi = new()
         {
-            SystemInformationHandler = (int _, IntPtr _, int bufferSize, out int returnLength) =>
+            SystemInformationHandler = (_, _, bufferSize, out returnLength) =>
             {
                 returnLength = bufferSize + 1;
                 return StatusInfoLengthMismatch;
-            }
+            },
         };
         using TrackingNativeBufferAllocator memory = new();
 
@@ -182,14 +193,21 @@ public sealed class WindowsHandleApiTests
             ProcessSelection.AllProcesses,
             nativeApi,
             memory,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(8, nativeApi.SystemInformationCalls.Count);
         Assert.NotEmpty(memory.AllocationSizes);
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
-        Assert.All(memory.AllocationSizes, size => Assert.InRange(size, 1, MaximumHandleBufferSize));
+        Assert.All(
+            memory.AllocationSizes,
+            size => Assert.InRange(size, 1, MaximumHandleBufferSize)
+        );
         Assert.Equal(0, memory.OutstandingCount);
-        Assert.Contains(result.Warnings, warning => warning.Contains("retry or memory limit", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Warnings,
+            warning => warning.Contains("retry or memory limit", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -197,11 +215,11 @@ public sealed class WindowsHandleApiTests
     {
         FakeWindowsHandleNativeApi nativeApi = new()
         {
-            SystemInformationHandler = (int _, IntPtr _, int _, out int returnLength) =>
+            SystemInformationHandler = (_, _, _, out returnLength) =>
             {
                 returnLength = MaximumHandleBufferSize + 1;
                 return StatusInfoLengthMismatch;
-            }
+            },
         };
         using TrackingNativeBufferAllocator memory = new();
 
@@ -209,13 +227,20 @@ public sealed class WindowsHandleApiTests
             ProcessSelection.AllProcesses,
             nativeApi,
             memory,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Single(nativeApi.SystemInformationCalls);
-        Assert.All(memory.AllocationSizes, size => Assert.InRange(size, 1, MaximumHandleBufferSize));
+        Assert.All(
+            memory.AllocationSizes,
+            size => Assert.InRange(size, 1, MaximumHandleBufferSize)
+        );
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
-        Assert.Contains(result.Warnings, warning => warning.Contains("retry or memory limit", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Warnings,
+            warning => warning.Contains("retry or memory limit", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -223,11 +248,11 @@ public sealed class WindowsHandleApiTests
     {
         FakeWindowsHandleNativeApi nativeApi = new()
         {
-            SystemInformationHandler = (int _, IntPtr _, int bufferSize, out int returnLength) =>
+            SystemInformationHandler = (_, _, bufferSize, out returnLength) =>
             {
                 returnLength = bufferSize + 1;
                 return StatusSuccess;
-            }
+            },
         };
         using TrackingNativeBufferAllocator memory = new();
 
@@ -235,9 +260,13 @@ public sealed class WindowsHandleApiTests
             ProcessSelection.AllProcesses,
             nativeApi,
             memory,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
-        Assert.Contains(result.Warnings, warning => warning.Contains("invalid handle-table size", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Warnings,
+            warning => warning.Contains("invalid handle-table size", StringComparison.Ordinal)
+        );
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
     }
@@ -247,11 +276,11 @@ public sealed class WindowsHandleApiTests
     {
         FakeWindowsHandleNativeApi nativeApi = new()
         {
-            SystemInformationHandler = (int _, IntPtr _, int _, out int returnLength) =>
+            SystemInformationHandler = (_, _, _, out returnLength) =>
             {
                 returnLength = 0;
                 return unchecked((int)0xC0000001);
-            }
+            },
         };
         using TrackingNativeBufferAllocator memory = new();
 
@@ -259,10 +288,14 @@ public sealed class WindowsHandleApiTests
             ProcessSelection.AllProcesses,
             nativeApi,
             memory,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(result.Handles);
-        Assert.Contains(result.Warnings, warning => warning.Contains("could not query system handles", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Warnings,
+            warning => warning.Contains("could not query system handles", StringComparison.Ordinal)
+        );
         Assert.NotEmpty(memory.AllocationSizes);
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
@@ -272,7 +305,10 @@ public sealed class WindowsHandleApiTests
     [InlineData("open-process", 0)]
     [InlineData("duplicate", 1)]
     [InlineData("path", 2)]
-    public void EnumerateDiskFileHandles_reports_partial_inspection_and_closes_owned_handles(string failure, int expectedClosedHandles)
+    public void EnumerateDiskFileHandles_reports_partial_inspection_and_closes_owned_handles(
+        string failure,
+        int expectedClosedHandles
+    )
     {
         FakeWindowsHandleNativeApi nativeApi = CreateNativeApiWithOneFileHandle();
         switch (failure)
@@ -293,10 +329,18 @@ public sealed class WindowsHandleApiTests
             ProcessSelection.FromProcessIds([FixtureProcessId]),
             nativeApi,
             memory,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(result.Handles);
-        Assert.Contains(result.Warnings, warning => warning.Contains("could not inspect 1 matching system handle", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Warnings,
+            warning =>
+                warning.Contains(
+                    "could not inspect 1 matching system handle",
+                    StringComparison.Ordinal
+                )
+        );
         Assert.Equal(expectedClosedHandles, nativeApi.ClosedHandles.Count);
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
@@ -305,23 +349,42 @@ public sealed class WindowsHandleApiTests
     [Theory]
     [InlineData(100, 200, MaximumHandleBufferSize, HandleBufferGrowth, 200 + HandleBufferGrowth)]
     [InlineData(100, 50, MaximumHandleBufferSize, HandleBufferGrowth, 200)]
-    [InlineData(MaximumHandleBufferSize - 1000, MaximumHandleBufferSize - 500, MaximumHandleBufferSize, HandleBufferGrowth, MaximumHandleBufferSize)]
+    [InlineData(
+        MaximumHandleBufferSize - 1000,
+        MaximumHandleBufferSize - 500,
+        MaximumHandleBufferSize,
+        HandleBufferGrowth,
+        MaximumHandleBufferSize
+    )]
     [InlineData(100, MaximumHandleBufferSize + 1, MaximumHandleBufferSize, HandleBufferGrowth, 0)]
-    [InlineData(MaximumHandleBufferSize, MaximumHandleBufferSize, MaximumHandleBufferSize, HandleBufferGrowth, 0)]
+    [InlineData(
+        MaximumHandleBufferSize,
+        MaximumHandleBufferSize,
+        MaximumHandleBufferSize,
+        HandleBufferGrowth,
+        0
+    )]
     public void NativeBufferSizing_GetNextSize_applies_growth_and_cap_rules(
         int current,
         int required,
         int maximumSize,
         int growth,
-        int expected)
+        int expected
+    )
     {
-        Assert.Equal(expected, NativeBufferSizing.GetNextSize(current, required, maximumSize, growth));
+        Assert.Equal(
+            expected,
+            NativeBufferSizing.GetNextSize(current, required, maximumSize, growth)
+        );
     }
 
     [Theory]
     [InlineData(@"\\?\C:\temp\file.txt", @"C:\temp\file.txt")]
     [InlineData(@"\\?\UNC\server\share\file.txt", @"\\server\share\file.txt")]
-    public void GetPathFromHandle_strips_extended_drive_and_unc_prefixes(string nativePath, string expectedPath)
+    public void GetPathFromHandle_strips_extended_drive_and_unc_prefixes(
+        string nativePath,
+        string expectedPath
+    )
     {
         FakeWindowsHandleNativeApi nativeApi = new() { FinalPath = nativePath };
 
@@ -340,7 +403,10 @@ public sealed class WindowsHandleApiTests
         Assert.Equal(2, longPathApi.FinalPathCallCount);
 
         FakeWindowsHandleNativeApi oversizedPathApi = new() { FinalPath = new string('x', 32769) };
-        string? oversizedPath = WindowsHandleApi.GetPathFromHandle(oversizedPathApi, new IntPtr(17));
+        string? oversizedPath = WindowsHandleApi.GetPathFromHandle(
+            oversizedPathApi,
+            new IntPtr(17)
+        );
 
         Assert.Null(oversizedPath);
         Assert.Equal(1, oversizedPathApi.FinalPathCallCount);
@@ -362,8 +428,14 @@ public sealed class WindowsHandleApiTests
         BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(row + 3 * pointerSize), 0x00120089);
         BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(row + 3 * pointerSize + 4), 0x3344);
         BinaryPrimitives.WriteUInt16LittleEndian(table.AsSpan(row + 3 * pointerSize + 6), 0x5566);
-        BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(row + 3 * pointerSize + 8), 0x778899AA);
-        BinaryPrimitives.WriteUInt32LittleEndian(table.AsSpan(row + 3 * pointerSize + 12), 0xAABBCCDD);
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            table.AsSpan(row + 3 * pointerSize + 8),
+            0x778899AA
+        );
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            table.AsSpan(row + 3 * pointerSize + 12),
+            0xAABBCCDD
+        );
         return table;
     }
 
@@ -372,12 +444,12 @@ public sealed class WindowsHandleApiTests
         byte[] table = CreateSingleHandleTable(FixtureProcessId, FixtureHandle);
         return new FakeWindowsHandleNativeApi
         {
-            SystemInformationHandler = (int _, IntPtr buffer, int _, out int returnLength) =>
+            SystemInformationHandler = (_, buffer, _, out returnLength) =>
             {
                 Marshal.Copy(table, 0, buffer, table.Length);
                 returnLength = table.Length;
                 return StatusSuccess;
-            }
+            },
         };
     }
 

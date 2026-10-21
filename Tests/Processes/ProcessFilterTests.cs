@@ -63,12 +63,20 @@ public sealed class ProcessFilterTests
     {
         const int processId = 12345;
         ProcessFilter filter = new([processId.ToString(CultureInfo.InvariantCulture)]);
-        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(processId, "app", "C:\\app.exe"));
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(processId, "app", "C:\\app.exe")
+        );
         CollectionReport report = new();
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(filter.Matches(processId, "different-name"));
-        Assert.False(filter.Matches(processId + 1, processId.ToString(CultureInfo.InvariantCulture)));
+        Assert.False(
+            filter.Matches(processId + 1, processId.ToString(CultureInfo.InvariantCulture))
+        );
         Assert.False(selection.IncludesAllProcesses);
         Assert.Contains(processId, selection.ProcessIds);
         Assert.False(report.HasWarnings);
@@ -81,7 +89,11 @@ public sealed class ProcessFilterTests
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         CollectionReport report = new();
 
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(selection.IsEmpty);
         CollectionDiagnostic diagnostic = Assert.Single(report.Diagnostics);
@@ -96,7 +108,11 @@ public sealed class ProcessFilterTests
         ProcessFilter filter = new([processId.ToString(CultureInfo.InvariantCulture)]);
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         CollectionReport report = new();
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(selection.IsEmpty);
         Assert.Contains("No running process matches", Assert.Single(report.Diagnostics).Message);
@@ -110,7 +126,11 @@ public sealed class ProcessFilterTests
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         CollectionReport report = new();
 
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(selection.IncludesAllProcesses);
         Assert.False(selection.IsEmpty);
@@ -123,16 +143,19 @@ public sealed class ProcessFilterTests
     {
         using ProcessCatalog catalog = TestCatalogFactory.Create(
             new ProcessInfo(1, "one", "C:\\one.exe"),
-            new ProcessInfo(2, "two", "C:\\two.exe"));
+            new ProcessInfo(2, "two", "C:\\two.exe")
+        );
         CollectionReport report = new();
-        FakeOwnerProvider owners = new(new Dictionary<int, string>
-        {
-            [1] = "DOMAIN\\alice",
-            [2] = "DOMAIN\\bob"
-        });
+        FakeOwnerProvider owners = new(
+            new Dictionary<int, string> { [1] = "DOMAIN\\alice", [2] = "DOMAIN\\bob" }
+        );
         ProcessFilter filter = new([], ["alice"], owners);
 
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.False(selection.IncludesAllProcesses);
         Assert.Contains(1, selection.ProcessIds);
@@ -143,12 +166,18 @@ public sealed class ProcessFilterTests
     [Fact]
     public void ResolveSelection_matches_domain_qualified_user_filters()
     {
-        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(1, "one", "C:\\one.exe"));
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(1, "one", "C:\\one.exe")
+        );
         CollectionReport report = new();
         FakeOwnerProvider owners = new(new Dictionary<int, string> { [1] = "DOMAIN\\alice" });
         ProcessFilter filter = new([], ["domain\\ALICE"], owners);
 
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Contains(1, selection.ProcessIds);
     }
@@ -159,17 +188,24 @@ public sealed class ProcessFilterTests
         using ProcessCatalog catalog = TestCatalogFactory.Create(
             new ProcessInfo(1, "one", "C:\\one.exe"),
             new ProcessInfo(2, "two", "C:\\two.exe"),
-            new ProcessInfo(3, "three", "C:\\three.exe"));
+            new ProcessInfo(3, "three", "C:\\three.exe")
+        );
         CollectionReport report = new();
-        FakeOwnerProvider owners = new(new Dictionary<int, string>
-        {
-            [1] = "DOMAIN\\bob",
-            [2] = "DOMAIN\\alice",
-            [3] = "DOMAIN\\carol"
-        });
+        FakeOwnerProvider owners = new(
+            new Dictionary<int, string>
+            {
+                [1] = "DOMAIN\\bob",
+                [2] = "DOMAIN\\alice",
+                [3] = "DOMAIN\\carol",
+            }
+        );
         ProcessFilter filter = new(["one"], ["alice"], owners);
 
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Contains(1, selection.ProcessIds);
         Assert.Contains(2, selection.ProcessIds);
@@ -179,42 +215,50 @@ public sealed class ProcessFilterTests
     [Fact]
     public void ResolveSelection_reports_information_when_no_user_matches()
     {
-        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(1, "one", "C:\\one.exe"));
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(1, "one", "C:\\one.exe")
+        );
         CollectionReport report = new();
         FakeOwnerProvider owners = new(new Dictionary<int, string> { [1] = "DOMAIN\\alice" });
         ProcessFilter filter = new([], ["missing-user"], owners);
 
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(selection.IsEmpty);
-        Assert.Contains("No running process matches: missing-user", Assert.Single(report.Diagnostics).Message);
+        Assert.Contains(
+            "No running process matches: missing-user",
+            Assert.Single(report.Diagnostics).Message
+        );
     }
 
     [Fact]
     public void ResolveSelection_skips_processes_whose_owner_cannot_be_resolved()
     {
-        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(1, "one", "C:\\one.exe"));
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(1, "one", "C:\\one.exe")
+        );
         CollectionReport report = new();
-        FakeOwnerProvider owners = new(new Dictionary<int, string>());
+        FakeOwnerProvider owners = new([]);
         ProcessFilter filter = new([], ["alice"], owners);
 
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(selection.IsEmpty);
     }
 
-    private sealed class FakeOwnerProvider : IProcessOwnerProvider
+    private sealed class FakeOwnerProvider(Dictionary<int, string> owners) : IProcessOwnerProvider
     {
-        private readonly Dictionary<int, string> _owners;
-
-        public FakeOwnerProvider(Dictionary<int, string> owners)
-        {
-            _owners = owners;
-        }
-
         public string? GetOwner(int processId)
         {
-            return _owners.TryGetValue(processId, out string? owner) ? owner : null;
+            return owners.TryGetValue(processId, out string? owner) ? owner : null;
         }
     }
 }

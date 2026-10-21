@@ -2,7 +2,12 @@ using Lsof.Native;
 
 namespace Lsof.Tests.Support;
 
-internal delegate int FakeSystemInformationHandler(int infoClass, IntPtr information, int informationLength, out int returnLength);
+internal delegate int FakeSystemInformationHandler(
+    int infoClass,
+    IntPtr information,
+    int informationLength,
+    out int returnLength
+);
 
 internal sealed record SystemInformationCall(int InfoClass, IntPtr Buffer, int BufferSize);
 
@@ -10,11 +15,11 @@ internal sealed class FakeWindowsHandleNativeApi : IWindowsHandleNativeApi
 {
     public FakeSystemInformationHandler? SystemInformationHandler { get; set; }
 
-    public List<SystemInformationCall> SystemInformationCalls { get; } = new();
+    public List<SystemInformationCall> SystemInformationCalls { get; } = [];
 
-    public List<int> OpenedProcessIds { get; } = new();
+    public List<int> OpenedProcessIds { get; } = [];
 
-    public List<IntPtr> ClosedHandles { get; } = new();
+    public List<IntPtr> ClosedHandles { get; } = [];
 
     public IntPtr ProcessHandle { get; set; } = new(100);
 
@@ -36,16 +41,28 @@ internal sealed class FakeWindowsHandleNativeApi : IWindowsHandleNativeApi
 
     public int FinalPathCallCount { get; private set; }
 
-    public int QuerySystemInformation(int infoClass, IntPtr information, int informationLength, out int returnLength)
+    public int QuerySystemInformation(
+        int infoClass,
+        IntPtr information,
+        int informationLength,
+        out int returnLength
+    )
     {
-        SystemInformationCalls.Add(new SystemInformationCall(infoClass, information, informationLength));
+        SystemInformationCalls.Add(
+            new SystemInformationCall(infoClass, information, informationLength)
+        );
         if (SystemInformationHandler is null)
         {
             returnLength = 0;
             return unchecked((int)0xC0000004);
         }
 
-        return SystemInformationHandler(infoClass, information, informationLength, out returnLength);
+        return SystemInformationHandler(
+            infoClass,
+            information,
+            informationLength,
+            out returnLength
+        );
     }
 
     public IntPtr OpenProcess(int access, bool inherit, int processId)
@@ -61,7 +78,8 @@ internal sealed class FakeWindowsHandleNativeApi : IWindowsHandleNativeApi
         out IntPtr targetHandle,
         uint access,
         bool inherit,
-        uint options)
+        uint options
+    )
     {
         LastDuplicatedSourceHandle = sourceHandle;
         targetHandle = DuplicateHandleSucceeds ? DuplicatedHandle : IntPtr.Zero;

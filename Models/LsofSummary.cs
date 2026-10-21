@@ -32,7 +32,7 @@ internal readonly struct LsofSummary
         {
             Connections = connections,
             Files = files,
-            Modules = modules
+            Modules = modules,
         };
     }
 }

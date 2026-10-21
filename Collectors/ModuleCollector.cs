@@ -6,14 +6,16 @@ namespace Lsof.Collectors;
 
 internal static class ModuleCollector
 {
-    private static readonly IProcessModuleProvider NativeModuleProvider = new ProcessModuleProvider();
+    private static readonly IProcessModuleProvider NativeModuleProvider =
+        new ProcessModuleProvider();
 
     public static void Collect(
         ProcessCatalog catalog,
         ProcessSelection selection,
         List<LsofEntry> entries,
         CollectionReport report,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         Collect(catalog, selection, entries, report, NativeModuleProvider, cancellationToken);
     }
@@ -24,7 +26,8 @@ internal static class ModuleCollector
         List<LsofEntry> entries,
         CollectionReport report,
         IProcessModuleProvider moduleProvider,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (selection.IsEmpty)
@@ -43,7 +46,8 @@ internal static class ModuleCollector
             {
                 processId = process.Id;
             }
-            catch (Exception exception) when (ProcessCatalog.IsExpectedProcessInspectionException(process, exception))
+            catch (Exception exception)
+                when (ProcessCatalog.IsExpectedProcessInspectionException(process, exception))
             {
                 processInspectionFailures++;
                 continue;
@@ -59,7 +63,8 @@ internal static class ModuleCollector
             {
                 modules = moduleProvider.GetModules(process, cancellationToken);
             }
-            catch (Exception exception) when (ProcessCatalog.IsExpectedProcessInspectionException(process, exception))
+            catch (Exception exception)
+                when (ProcessCatalog.IsExpectedProcessInspectionException(process, exception))
             {
                 moduleCollectionFailures++;
                 continue;
@@ -77,12 +82,14 @@ internal static class ModuleCollector
             }
         }
 
-        int failureCount = processInspectionFailures + moduleCollectionFailures + modulePathFailures;
+        int failureCount =
+            processInspectionFailures + moduleCollectionFailures + modulePathFailures;
         if (failureCount > 0)
         {
             report.AddWarning(
-                $"Warning: module inspection was incomplete ({processInspectionFailures} process IDs, " +
-                $"{moduleCollectionFailures} module lists, {modulePathFailures} module paths could not be read).");
+                $"Warning: module inspection was incomplete ({processInspectionFailures} process IDs, "
+                    + $"{moduleCollectionFailures} module lists, {modulePathFailures} module paths could not be read)."
+            );
         }
     }
 }

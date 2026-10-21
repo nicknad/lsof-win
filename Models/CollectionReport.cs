@@ -3,18 +3,19 @@ namespace Lsof.Models;
 internal enum CollectionDiagnosticLevel
 {
     Information,
-    Warning
+    Warning,
 }
 
 internal sealed record CollectionDiagnostic(CollectionDiagnosticLevel Level, string Message);
 
 internal sealed class CollectionReport
 {
-    private readonly List<CollectionDiagnostic> _diagnostics = new();
+    private readonly List<CollectionDiagnostic> _diagnostics = [];
 
     public IReadOnlyList<CollectionDiagnostic> Diagnostics => _diagnostics;
 
-    public bool HasWarnings => _diagnostics.Any(diagnostic => diagnostic.Level == CollectionDiagnosticLevel.Warning);
+    public bool HasWarnings =>
+        _diagnostics.Any(diagnostic => diagnostic.Level == CollectionDiagnosticLevel.Warning);
 
     public void AddInformation(string message)
     {

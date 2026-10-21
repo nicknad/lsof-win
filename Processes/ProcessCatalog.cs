@@ -21,7 +21,10 @@ internal sealed class ProcessCatalog : IDisposable
 
     public IEnumerable<ProcessInfo> ProcessInfos => _processInfoById.Values;
 
-    public static ProcessCatalog Create(CollectionReport report, CancellationToken cancellationToken = default)
+    public static ProcessCatalog Create(
+        CollectionReport report,
+        CancellationToken cancellationToken = default
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         Process[] processes;
@@ -34,10 +37,10 @@ internal sealed class ProcessCatalog : IDisposable
         catch (Exception exception) when (IsExpectedInspectionException(exception))
         {
             report.AddWarning($"Warning: could not enumerate processes: {exception.Message}");
-            processes = Array.Empty<Process>();
+            processes = [];
         }
 
-        Dictionary<int, ProcessInfo> processInfoById = new();
+        Dictionary<int, ProcessInfo> processInfoById = [];
         int processIdInspectionFailures = 0;
         int processNameInspectionFailures = 0;
         int processPathInspectionFailures = 0;
@@ -52,7 +55,8 @@ internal sealed class ProcessCatalog : IDisposable
                     // Process.Id reads the PID; it can throw if the process has already exited.
                     id = process.Id;
                 }
-                catch (Exception exception) when (IsExpectedProcessInspectionException(process, exception))
+                catch (Exception exception)
+                    when (IsExpectedProcessInspectionException(process, exception))
                 {
                     processIdInspectionFailures++;
                     continue;
@@ -69,7 +73,8 @@ internal sealed class ProcessCatalog : IDisposable
                     // Process.ProcessName reads the executable name (a Win32 query under the hood).
                     name = process.ProcessName;
                 }
-                catch (Exception exception) when (IsExpectedProcessInspectionException(process, exception))
+                catch (Exception exception)
+                    when (IsExpectedProcessInspectionException(process, exception))
                 {
                     processNameInspectionFailures++;
                 }
@@ -80,7 +85,8 @@ internal sealed class ProcessCatalog : IDisposable
                     // Process.MainModule opens a module snapshot and FileName resolves the image path.
                     path = process.MainModule?.FileName ?? "";
                 }
-                catch (Exception exception) when (IsExpectedProcessInspectionException(process, exception))
+                catch (Exception exception)
+                    when (IsExpectedProcessInspectionException(process, exception))
                 {
                     processPathInspectionFailures++;
                 }
@@ -94,11 +100,17 @@ internal sealed class ProcessCatalog : IDisposable
             throw;
         }
 
-        if (processIdInspectionFailures + processNameInspectionFailures + processPathInspectionFailures > 0)
+        if (
+            processIdInspectionFailures
+                + processNameInspectionFailures
+                + processPathInspectionFailures
+            > 0
+        )
         {
             report.AddWarning(
-                $"Warning: process metadata could not be read for {processIdInspectionFailures + processNameInspectionFailures + processPathInspectionFailures} inspection(s) " +
-                $"(IDs: {processIdInspectionFailures}, names: {processNameInspectionFailures}, paths: {processPathInspectionFailures}).");
+                $"Warning: process metadata could not be read for {processIdInspectionFailures + processNameInspectionFailures + processPathInspectionFailures} inspection(s) "
+                    + $"(IDs: {processIdInspectionFailures}, names: {processNameInspectionFailures}, paths: {processPathInspectionFailures})."
+            );
         }
 
         return new ProcessCatalog(processes, processInfoById);
@@ -112,7 +124,7 @@ internal sealed class ProcessCatalog : IDisposable
         {
             ProcessId = processId,
             ProcessName = name,
-            ProcessPath = info?.Path ?? ""
+            ProcessPath = info?.Path ?? "",
         };
     }
 
@@ -123,9 +135,7 @@ internal sealed class ProcessCatalog : IDisposable
 
     internal static bool IsExpectedInspectionException(Exception exception)
     {
-        return exception is Win32Exception
-            or UnauthorizedAccessException
-            or NotSupportedException;
+        return exception is Win32Exception or UnauthorizedAccessException or NotSupportedException;
     }
 
     internal static bool IsExpectedProcessInspectionException(Process process, Exception exception)
@@ -140,7 +150,13 @@ internal sealed class ProcessCatalog : IDisposable
             // InvalidOperationException usually means the process exited; HasExited confirms it.
             return process.HasExited;
         }
-        catch (Exception hasExitedException) when (hasExitedException is Win32Exception or UnauthorizedAccessException or NotSupportedException or InvalidOperationException)
+        catch (Exception hasExitedException)
+            when (hasExitedException
+                    is Win32Exception
+                        or UnauthorizedAccessException
+                        or NotSupportedException
+                        or InvalidOperationException
+            )
         {
             return false;
         }
@@ -152,7 +168,7 @@ internal sealed class ProcessCatalog : IDisposable
         {
             IdleProcessId => "Idle",
             SystemProcessId => "System",
-            _ => $"PID {processId}"
+            _ => $"PID {processId}",
         };
     }
 

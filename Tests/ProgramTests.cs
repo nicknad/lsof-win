@@ -47,7 +47,9 @@ public sealed class ProgramTests
     [Fact]
     public void ApplyDefaultCollectors_preserves_an_explicit_type_selection()
     {
-        Assert.True(CommandLineOptions.TryParse(["--modules"], out CommandLineOptions options, out _));
+        Assert.True(
+            CommandLineOptions.TryParse(["--modules"], out CommandLineOptions options, out _)
+        );
 
         Program.ApplyDefaultCollectors(options);
 
@@ -59,7 +61,9 @@ public sealed class ProgramTests
     [Fact]
     public void ApplyDefaultCollectors_selects_files_only_when_a_path_filter_is_present()
     {
-        Assert.True(CommandLineOptions.TryParse(["C:\\temp\\a.txt"], out CommandLineOptions options, out _));
+        Assert.True(
+            CommandLineOptions.TryParse(["C:\\temp\\a.txt"], out CommandLineOptions options, out _)
+        );
 
         Program.ApplyDefaultCollectors(options);
 
@@ -70,7 +74,13 @@ public sealed class ProgramTests
     [Fact]
     public void ApplyDefaultCollectors_preserves_an_explicit_network_selection_with_a_path_filter()
     {
-        Assert.True(CommandLineOptions.TryParse(["--network", "C:\\temp\\a.txt"], out CommandLineOptions options, out _));
+        Assert.True(
+            CommandLineOptions.TryParse(
+                ["--network", "C:\\temp\\a.txt"],
+                out CommandLineOptions options,
+                out _
+            )
+        );
 
         Program.ApplyDefaultCollectors(options);
 

@@ -1,6 +1,6 @@
+using System.Text.Json;
 using Lsof.Models;
 using Lsof.Output;
-using System.Text.Json;
 
 namespace Lsof.Tests.Models;
 
@@ -14,7 +14,11 @@ public sealed class LsofEntryTests
         LsofEntry different = CreateEntry();
         different.Name = "C:\\other.txt";
 
-        List<LsofEntry> result = LsofEntryDeduplicator.RemoveDuplicateEntries([first, duplicate, different]);
+        List<LsofEntry> result = LsofEntryDeduplicator.RemoveDuplicateEntries([
+            first,
+            duplicate,
+            different,
+        ]);
 
         Assert.Equal(2, result.Count);
         Assert.Same(first, result[0]);
@@ -41,7 +45,12 @@ public sealed class LsofEntryTests
         LsofEntry zeta = CreateEntry();
         zeta.ProcessName = "zeta";
 
-        List<LsofEntry> unique = LsofEntryDeduplicator.RemoveDuplicateEntries([secondHandle, zeta, firstHandle, alpha]);
+        List<LsofEntry> unique = LsofEntryDeduplicator.RemoveDuplicateEntries([
+            secondHandle,
+            zeta,
+            firstHandle,
+            alpha,
+        ]);
         unique.Sort(LsofEntryComparer.Instance);
 
         Assert.Collection(
@@ -49,7 +58,8 @@ public sealed class LsofEntryTests
             entry => Assert.Same(alpha, entry),
             entry => Assert.Same(firstHandle, entry),
             entry => Assert.Same(secondHandle, entry),
-            entry => Assert.Same(zeta, entry));
+            entry => Assert.Same(zeta, entry)
+        );
     }
 
     [Fact]
@@ -95,7 +105,7 @@ public sealed class LsofEntryTests
             ProcessPath = "C:\\process.exe",
             Kind = LsofEntryKind.File,
             Name = "C:\\file.txt",
-            Handle = "0x10"
+            Handle = "0x10",
         };
     }
 }

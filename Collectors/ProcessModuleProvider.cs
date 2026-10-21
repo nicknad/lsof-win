@@ -22,16 +22,20 @@ internal sealed class ProcessModuleProvider : IProcessModuleProvider
                 // ProcessModule.FileName is another OS read (the module's path) that can fail per module.
                 paths.Add(module.FileName ?? "");
             }
-            catch (Exception exception) when (ProcessCatalog.IsExpectedProcessInspectionException(process, exception))
+            catch (Exception exception)
+                when (ProcessCatalog.IsExpectedProcessInspectionException(process, exception))
             {
                 unreadablePathCount++;
             }
         }
 
-        return new ModuleSnapshot(paths.ToArray(), unreadablePathCount);
+        return new ModuleSnapshot([.. paths], unreadablePathCount);
     }
 
-    internal static ProcessModule[] SnapshotModules(ProcessModuleCollection modules, CancellationToken cancellationToken)
+    internal static ProcessModule[] SnapshotModules(
+        ProcessModuleCollection modules,
+        CancellationToken cancellationToken
+    )
     {
         ProcessModule[] snapshot = new ProcessModule[modules.Count];
         // Snapshot before constructing output rows so later iteration is independent of the live Process object.

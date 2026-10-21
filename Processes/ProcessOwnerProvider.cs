@@ -16,9 +16,7 @@ internal sealed class ProcessOwnerProvider : IProcessOwnerProvider
     private readonly IProcessOwnerNativeApi _nativeApi;
 
     public ProcessOwnerProvider()
-        : this(DefaultApi)
-    {
-    }
+        : this(DefaultApi) { }
 
     internal ProcessOwnerProvider(IProcessOwnerNativeApi nativeApi)
     {
@@ -27,7 +25,10 @@ internal sealed class ProcessOwnerProvider : IProcessOwnerProvider
 
     public string? GetOwner(int processId)
     {
-        IntPtr processHandle = _nativeApi.OpenProcess(ProcessOwnerNativeApi.ProcessQueryLimitedInformation, processId);
+        IntPtr processHandle = _nativeApi.OpenProcess(
+            ProcessOwnerNativeApi.ProcessQueryLimitedInformation,
+            processId
+        );
         if (processHandle == IntPtr.Zero)
         {
             return null;
@@ -35,7 +36,13 @@ internal sealed class ProcessOwnerProvider : IProcessOwnerProvider
 
         try
         {
-            if (!_nativeApi.OpenProcessToken(processHandle, ProcessOwnerNativeApi.TokenQuery, out IntPtr tokenHandle))
+            if (
+                !_nativeApi.OpenProcessToken(
+                    processHandle,
+                    ProcessOwnerNativeApi.TokenQuery,
+                    out IntPtr tokenHandle
+                )
+            )
             {
                 return null;
             }
@@ -58,7 +65,13 @@ internal sealed class ProcessOwnerProvider : IProcessOwnerProvider
     private string? ReadOwner(IntPtr tokenHandle)
     {
         // First call with a null buffer reports the required token-user size.
-        _ = _nativeApi.GetTokenInformation(tokenHandle, TokenUser, IntPtr.Zero, 0, out int requiredLength);
+        _ = _nativeApi.GetTokenInformation(
+            tokenHandle,
+            TokenUser,
+            IntPtr.Zero,
+            0,
+            out int requiredLength
+        );
         if (requiredLength <= 0)
         {
             return null;
@@ -67,7 +80,15 @@ internal sealed class ProcessOwnerProvider : IProcessOwnerProvider
         IntPtr buffer = Marshal.AllocHGlobal(requiredLength);
         try
         {
-            if (!_nativeApi.GetTokenInformation(tokenHandle, TokenUser, buffer, requiredLength, out _))
+            if (
+                !_nativeApi.GetTokenInformation(
+                    tokenHandle,
+                    TokenUser,
+                    buffer,
+                    requiredLength,
+                    out _
+                )
+            )
             {
                 return null;
             }
@@ -88,17 +109,17 @@ internal sealed class ProcessOwnerProvider : IProcessOwnerProvider
         char[] domain = new char[AccountNameBufferLength];
         int nameLength = name.Length;
         int domainLength = domain.Length;
-        if (!_nativeApi.LookupAccountSid(sid, name, ref nameLength, domain, ref domainLength, out _) || nameLength <= 0)
+        if (
+            !_nativeApi.LookupAccountSid(sid, name, ref nameLength, domain, ref domainLength, out _)
+            || nameLength <= 0
+        )
         {
             return null;
         }
 
         string account = new(name, 0, nameLength);
-        if (domainLength <= 0)
-        {
-            return account;
-        }
-
-        return string.Concat(new string(domain, 0, domainLength), "\\", account);
+        return domainLength <= 0
+            ? account
+            : string.Concat(new string(domain, 0, domainLength), "\\", account);
     }
 }

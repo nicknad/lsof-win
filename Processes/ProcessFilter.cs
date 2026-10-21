@@ -11,24 +11,33 @@ internal sealed class ProcessFilter
     private readonly string[] _processFilters;
     private readonly string[] _userFilters;
     private readonly IProcessOwnerProvider? _ownerProvider;
-    private readonly HashSet<int> _processIdFilters = new();
+    private readonly HashSet<int> _processIdFilters = [];
     private readonly string[] _processNameFilters;
-    private readonly Dictionary<(string Pattern, bool StripExeSuffix), Regex> _regexCache = new();
+    private readonly Dictionary<(string Pattern, bool StripExeSuffix), Regex> _regexCache = [];
 
     public ProcessFilter(List<string> filters)
-        : this(filters, Array.Empty<string>(), null)
-    {
-    }
+        : this(filters, [], null) { }
 
-    public ProcessFilter(IReadOnlyList<string> filters, IReadOnlyList<string> userFilters, IProcessOwnerProvider? ownerProvider)
+    public ProcessFilter(
+        IReadOnlyList<string> filters,
+        IReadOnlyList<string> userFilters,
+        IProcessOwnerProvider? ownerProvider
+    )
     {
-        _processFilters = filters.ToArray();
-        _userFilters = userFilters.ToArray();
+        _processFilters = [.. filters];
+        _userFilters = [.. userFilters];
         _ownerProvider = ownerProvider;
         List<string> processNameFilters = new(filters.Count);
         foreach (string filter in _processFilters)
         {
-            if (int.TryParse(filter, NumberStyles.Integer, CultureInfo.InvariantCulture, out int processId))
+            if (
+                int.TryParse(
+                    filter,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int processId
+                )
+            )
             {
                 _processIdFilters.Add(processId);
             }
@@ -38,10 +47,14 @@ internal sealed class ProcessFilter
             }
         }
 
-        _processNameFilters = processNameFilters.ToArray();
+        _processNameFilters = [.. processNameFilters];
     }
 
-    public ProcessSelection ResolveSelection(ProcessCatalog catalog, CollectionReport report, CancellationToken cancellationToken = default)
+    public ProcessSelection ResolveSelection(
+        ProcessCatalog catalog,
+        CollectionReport report,
+        CancellationToken cancellationToken = default
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (_processFilters.Length == 0 && _userFilters.Length == 0)
@@ -49,12 +62,14 @@ internal sealed class ProcessFilter
             return ProcessSelection.AllProcesses;
         }
 
-        HashSet<int> processIds = new();
+        HashSet<int> processIds = [];
         bool matchedRunningProcess = false;
         foreach (ProcessInfo info in catalog.ProcessInfos)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (MatchesProcessFilter(info.ProcessId, info.Name) || MatchesUserFilter(info.ProcessId))
+            if (
+                MatchesProcessFilter(info.ProcessId, info.Name) || MatchesUserFilter(info.ProcessId)
+            )
             {
                 matchedRunningProcess = true;
                 processIds.Add(info.ProcessId);
@@ -63,7 +78,9 @@ internal sealed class ProcessFilter
 
         if (!matchedRunningProcess)
         {
-            report.AddInformation("No running process matches: " + string.Join(", ", DescribeFilters()));
+            report.AddInformation(
+                "No running process matches: " + string.Join(", ", DescribeFilters())
+            );
         }
         return ProcessSelection.FromProcessIds(processIds);
     }
@@ -127,7 +144,10 @@ internal sealed class ProcessFilter
 
         // Also accept a bare account name when the owner is domain-qualified ("DOMAIN\user").
         int separator = owner.LastIndexOf('\\');
-        return separator >= 0 && owner.AsSpan(separator + 1).Equals(filter.AsSpan(), StringComparison.OrdinalIgnoreCase);
+        return separator >= 0
+            && owner
+                .AsSpan(separator + 1)
+                .Equals(filter.AsSpan(), StringComparison.OrdinalIgnoreCase);
     }
 
     public bool Matches(int processId, string processName)
@@ -147,26 +167,23 @@ internal sealed class ProcessFilter
         bool patternHasExeSuffix = HasExeSuffix(pattern.AsSpan());
         ReadOnlySpan<char> baseName = StripExeSuffix(processName);
 
-        if (WildcardMatch(baseName, pattern, patternHasExeSuffix))
-        {
-            return true;
-        }
-
-        return (nameHasExeSuffix || patternHasExeSuffix)
-            && WildcardMatch(processName, pattern, stripExeSuffix: false);
+        return WildcardMatch(baseName, pattern, patternHasExeSuffix)
+            || (
+                (nameHasExeSuffix || patternHasExeSuffix)
+                && WildcardMatch(processName, pattern, stripExeSuffix: false)
+            );
     }
 
     private static ReadOnlySpan<char> StripExeSuffix(ReadOnlySpan<char> value)
     {
-        return HasExeSuffix(value)
-            ? value[..^ExecutableSuffixLength]
-            : value;
+        return HasExeSuffix(value) ? value[..^ExecutableSuffixLength] : value;
     }
 
     private static bool HasExeSuffix(ReadOnlySpan<char> value)
     {
         return value.Length >= ExecutableSuffixLength
-            && value[^ExecutableSuffixLength..].Equals(".exe".AsSpan(), StringComparison.OrdinalIgnoreCase);
+            && value[^ExecutableSuffixLength..]
+                .Equals(".exe".AsSpan(), StringComparison.OrdinalIgnoreCase);
     }
 
     private bool WildcardMatch(ReadOnlySpan<char> input, string pattern, bool stripExeSuffix)
@@ -177,8 +194,14 @@ internal sealed class ProcessFilter
             string effectivePattern = stripExeSuffix ? pattern[..^ExecutableSuffixLength] : pattern;
             // Translate the wildcard pattern into an anchored regex (* -> .*, ? -> .) and cache it;
             // NonBacktracking keeps matching linear-time on hostile input.
-            string expression = "^" + Regex.Escape(effectivePattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
-            regex = new Regex(expression, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
+            string expression =
+                "^" + Regex.Escape(effectivePattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
+            regex = new Regex(
+                expression,
+                RegexOptions.IgnoreCase
+                    | RegexOptions.CultureInvariant
+                    | RegexOptions.NonBacktracking
+            );
             _regexCache.Add(cacheKey, regex);
         }
 

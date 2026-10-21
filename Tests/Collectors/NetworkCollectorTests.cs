@@ -23,17 +23,33 @@ public sealed class NetworkCollectorTests
         nativeApi.SetTable(false, IpHelperApi.AfInet, CreateUdp4Table());
         nativeApi.SetTable(false, IpHelperApi.AfInet6, CreateUdp6Table());
 
-        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(FixtureProcessId, "fixture-process", "C:\\fixture.exe"));
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(FixtureProcessId, "fixture-process", "C:\\fixture.exe")
+        );
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
-        ProcessSelection selection = new ProcessFilter([FixtureProcessId.ToString(CultureInfo.InvariantCulture)]).ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
+        ProcessSelection selection = new ProcessFilter([
+            FixtureProcessId.ToString(CultureInfo.InvariantCulture),
+        ]).ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
 
-        NetworkCollector.Collect(catalog, selection, [], entries, nativeApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            selection,
+            [],
+            entries,
+            nativeApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(4, entries.Count);
 
-        LsofEntry tcp4 = Assert.Single(entries, entry => entry.Protocol == "TCP" && entry.Category == "IPv4");
+        LsofEntry tcp4 = Assert.Single(
+            entries,
+            entry => entry.Protocol == "TCP" && entry.Category == "IPv4"
+        );
         Assert.Equal("Established", tcp4.State);
         Assert.Equal("192.0.2.10", tcp4.LocalAddress);
         Assert.Equal(4660, tcp4.LocalPort);
@@ -41,7 +57,10 @@ public sealed class NetworkCollectorTests
         Assert.Equal(443, tcp4.RemotePort);
         Assert.Equal(FixtureProcessId, tcp4.ProcessId);
 
-        LsofEntry tcp6 = Assert.Single(entries, entry => entry.Protocol == "TCP" && entry.Category == "IPv6");
+        LsofEntry tcp6 = Assert.Single(
+            entries,
+            entry => entry.Protocol == "TCP" && entry.Category == "IPv6"
+        );
         Assert.Equal("Established", tcp6.State);
         Assert.Equal("fe80::1234%9", tcp6.LocalAddress);
         Assert.Equal(62000, tcp6.LocalPort);
@@ -49,12 +68,18 @@ public sealed class NetworkCollectorTests
         Assert.Equal(443, tcp6.RemotePort);
         Assert.Equal(FixtureProcessId, tcp6.ProcessId);
 
-        LsofEntry udp4 = Assert.Single(entries, entry => entry.Protocol == "UDP" && entry.Category == "IPv4");
+        LsofEntry udp4 = Assert.Single(
+            entries,
+            entry => entry.Protocol == "UDP" && entry.Category == "IPv4"
+        );
         Assert.Equal("203.0.113.53", udp4.LocalAddress);
         Assert.Equal(5353, udp4.LocalPort);
         Assert.Equal(FixtureProcessId, udp4.ProcessId);
 
-        LsofEntry udp6 = Assert.Single(entries, entry => entry.Protocol == "UDP" && entry.Category == "IPv6");
+        LsofEntry udp6 = Assert.Single(
+            entries,
+            entry => entry.Protocol == "UDP" && entry.Category == "IPv6"
+        );
         Assert.Equal("fe80::abcd%17", udp6.LocalAddress);
         Assert.Equal(5354, udp6.LocalPort);
         Assert.Equal(FixtureProcessId, udp6.ProcessId);
@@ -72,10 +97,19 @@ public sealed class NetworkCollectorTests
         nativeApi.SetTable(true, IpHelperApi.AfInet6, CreateTcp6Table());
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
 
-        NetworkCollector.Collect(catalog, ProcessSelection.AllProcesses, [443], entries, nativeApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            ProcessSelection.AllProcesses,
+            [443],
+            entries,
+            nativeApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(2, entries.Count);
         Assert.All(entries, entry => Assert.Equal(443, entry.RemotePort));
@@ -85,7 +119,16 @@ public sealed class NetworkCollectorTests
         entries.Clear();
         report = new CollectionReport();
 
-        NetworkCollector.Collect(catalog, ProcessSelection.AllProcesses, [0], entries, listeningApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            ProcessSelection.AllProcesses,
+            [0],
+            entries,
+            listeningApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(entries);
         Assert.False(report.HasWarnings);
@@ -97,7 +140,7 @@ public sealed class NetworkCollectorTests
         FakeIpHelperApi nativeApi = new();
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
 
         NetworkCollector.Collect(
@@ -108,7 +151,8 @@ public sealed class NetworkCollectorTests
             nativeApi,
             memory,
             report,
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(entries);
         Assert.Empty(report.Diagnostics);
@@ -122,16 +166,35 @@ public sealed class NetworkCollectorTests
         FakeIpHelperApi nativeApi = new();
         byte[] tableWithZeroRows = new byte[sizeof(int)];
         WriteInt32(tableWithZeroRows, 0, 0);
-        nativeApi.SetTable(true, IpHelperApi.AfInet, tableWithZeroRows, reportedSize: sizeof(int) - 1);
+        nativeApi.SetTable(
+            true,
+            IpHelperApi.AfInet,
+            tableWithZeroRows,
+            reportedSize: sizeof(int) - 1
+        );
 
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
-        NetworkCollector.Collect(catalog, ProcessSelection.AllProcesses, [], entries, nativeApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            ProcessSelection.AllProcesses,
+            [],
+            entries,
+            nativeApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(entries);
-        Assert.Contains(report.Diagnostics, diagnostic => diagnostic.Level == CollectionDiagnosticLevel.Warning && diagnostic.Message.Contains("truncated table", StringComparison.Ordinal));
+        Assert.Contains(
+            report.Diagnostics,
+            diagnostic =>
+                diagnostic.Level == CollectionDiagnosticLevel.Warning
+                && diagnostic.Message.Contains("truncated table", StringComparison.Ordinal)
+        );
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
     }
@@ -148,12 +211,26 @@ public sealed class NetworkCollectorTests
 
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
-        NetworkCollector.Collect(catalog, ProcessSelection.AllProcesses, [], entries, nativeApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            ProcessSelection.AllProcesses,
+            [],
+            entries,
+            nativeApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(entries);
-        Assert.Contains(report.Diagnostics, diagnostic => diagnostic.Level == CollectionDiagnosticLevel.Warning && diagnostic.Message.Contains("invalid table size", StringComparison.Ordinal));
+        Assert.Contains(
+            report.Diagnostics,
+            diagnostic =>
+                diagnostic.Level == CollectionDiagnosticLevel.Warning
+                && diagnostic.Message.Contains("invalid table size", StringComparison.Ordinal)
+        );
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
     }
@@ -162,48 +239,85 @@ public sealed class NetworkCollectorTests
     public void QueryTable_bounds_retries_when_the_native_table_keeps_growing()
     {
         FakeIpHelperApi nativeApi = new();
-        nativeApi.SetHandler(true, IpHelperApi.AfInet, (IntPtr table, ref int size) =>
-        {
-            size = table == IntPtr.Zero ? 16 : size + 1;
-            return IpHelperApi.ErrorInsufficientBuffer;
-        });
+        nativeApi.SetHandler(
+            true,
+            IpHelperApi.AfInet,
+            (table, ref size) =>
+            {
+                size = table == IntPtr.Zero ? 16 : size + 1;
+                return IpHelperApi.ErrorInsufficientBuffer;
+            }
+        );
 
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
-        NetworkCollector.Collect(catalog, ProcessSelection.AllProcesses, [], entries, nativeApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            ProcessSelection.AllProcesses,
+            [],
+            entries,
+            nativeApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
-        IpHelperCall[] calls = nativeApi.Calls.Where(call => call.IsTcp && call.Family == IpHelperApi.AfInet).ToArray();
+        IpHelperCall[] calls =
+        [
+            .. nativeApi.Calls.Where(call => call.IsTcp && call.Family == IpHelperApi.AfInet),
+        ];
         Assert.InRange(calls.Length, 2, 9); // One sizing query plus bounded allocation attempts.
         Assert.Single(calls, call => call.Buffer == IntPtr.Zero);
         Assert.NotEmpty(memory.AllocationSizes);
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.All(memory.AllocationSizes, size => Assert.InRange(size, 1, MaximumTableBufferSize));
         Assert.Equal(0, memory.OutstandingCount);
-        Assert.Contains(report.Diagnostics, diagnostic => diagnostic.Level == CollectionDiagnosticLevel.Warning && diagnostic.Message.Contains("retry limit", StringComparison.Ordinal));
+        Assert.Contains(
+            report.Diagnostics,
+            diagnostic =>
+                diagnostic.Level == CollectionDiagnosticLevel.Warning
+                && diagnostic.Message.Contains("retry limit", StringComparison.Ordinal)
+        );
         Assert.Empty(entries);
     }
 
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void QueryTable_rejects_oversized_tables_without_exceeding_the_allocation_cap(bool oversizedOnSizingQuery)
+    public void QueryTable_rejects_oversized_tables_without_exceeding_the_allocation_cap(
+        bool oversizedOnSizingQuery
+    )
     {
         FakeIpHelperApi nativeApi = new();
-        nativeApi.SetHandler(true, IpHelperApi.AfInet, (IntPtr table, ref int size) =>
-        {
-            size = table == IntPtr.Zero && !oversizedOnSizingQuery
-                ? 16
-                : MaximumTableBufferSize + 1;
-            return IpHelperApi.ErrorInsufficientBuffer;
-        });
+        nativeApi.SetHandler(
+            true,
+            IpHelperApi.AfInet,
+            (table, ref size) =>
+            {
+                size =
+                    table == IntPtr.Zero && !oversizedOnSizingQuery
+                        ? 16
+                        : MaximumTableBufferSize + 1;
+                return IpHelperApi.ErrorInsufficientBuffer;
+            }
+        );
 
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
-        NetworkCollector.Collect(catalog, ProcessSelection.AllProcesses, [], entries, nativeApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            ProcessSelection.AllProcesses,
+            [],
+            entries,
+            nativeApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
         if (oversizedOnSizingQuery)
         {
@@ -217,7 +331,15 @@ public sealed class NetworkCollectorTests
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.All(memory.AllocationSizes, size => Assert.InRange(size, 1, MaximumTableBufferSize));
         Assert.Equal(0, memory.OutstandingCount);
-        Assert.Contains(report.Diagnostics, diagnostic => diagnostic.Level == CollectionDiagnosticLevel.Warning && diagnostic.Message.Contains("exceeded the buffer size limit", StringComparison.Ordinal));
+        Assert.Contains(
+            report.Diagnostics,
+            diagnostic =>
+                diagnostic.Level == CollectionDiagnosticLevel.Warning
+                && diagnostic.Message.Contains(
+                    "exceeded the buffer size limit",
+                    StringComparison.Ordinal
+                )
+        );
         Assert.Empty(entries);
     }
 
@@ -225,24 +347,42 @@ public sealed class NetworkCollectorTests
     public void QueryTable_frees_allocated_memory_when_the_native_call_fails()
     {
         FakeIpHelperApi nativeApi = new();
-        nativeApi.SetHandler(true, IpHelperApi.AfInet, (IntPtr table, ref int size) =>
-        {
-            if (table == IntPtr.Zero)
+        nativeApi.SetHandler(
+            true,
+            IpHelperApi.AfInet,
+            (table, ref size) =>
             {
-                size = 32;
-                return IpHelperApi.ErrorInsufficientBuffer;
-            }
+                if (table == IntPtr.Zero)
+                {
+                    size = 32;
+                    return IpHelperApi.ErrorInsufficientBuffer;
+                }
 
-            return 5;
-        });
+                return 5;
+            }
+        );
 
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
-        NetworkCollector.Collect(catalog, ProcessSelection.AllProcesses, [], entries, nativeApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            ProcessSelection.AllProcesses,
+            [],
+            entries,
+            nativeApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
-        Assert.Contains(report.Diagnostics, diagnostic => diagnostic.Level == CollectionDiagnosticLevel.Warning && diagnostic.Message.Contains("Windows error 5", StringComparison.Ordinal));
+        Assert.Contains(
+            report.Diagnostics,
+            diagnostic =>
+                diagnostic.Level == CollectionDiagnosticLevel.Warning
+                && diagnostic.Message.Contains("Windows error 5", StringComparison.Ordinal)
+        );
         Assert.NotEmpty(memory.AllocationSizes);
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
@@ -252,30 +392,48 @@ public sealed class NetworkCollectorTests
     [Theory]
     [InlineData(-1)]
     [InlineData(5)]
-    public void QueryTable_rejects_success_sizes_larger_than_the_allocated_buffer_and_frees_it(int reportedSize)
+    public void QueryTable_rejects_success_sizes_larger_than_the_allocated_buffer_and_frees_it(
+        int reportedSize
+    )
     {
         FakeIpHelperApi nativeApi = new();
-        nativeApi.SetHandler(true, IpHelperApi.AfInet, (IntPtr table, ref int size) =>
-        {
-            if (table == IntPtr.Zero)
+        nativeApi.SetHandler(
+            true,
+            IpHelperApi.AfInet,
+            (table, ref size) =>
             {
-                size = sizeof(int);
-                return IpHelperApi.ErrorInsufficientBuffer;
-            }
+                if (table == IntPtr.Zero)
+                {
+                    size = sizeof(int);
+                    return IpHelperApi.ErrorInsufficientBuffer;
+                }
 
-            size = reportedSize;
-            return IpHelperApi.ErrorSuccess;
-        });
+                size = reportedSize;
+                return IpHelperApi.ErrorSuccess;
+            }
+        );
 
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         using TrackingNativeBufferAllocator memory = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         CollectionReport report = new();
-        NetworkCollector.Collect(catalog, ProcessSelection.AllProcesses, [], entries, nativeApi, memory, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            ProcessSelection.AllProcesses,
+            [],
+            entries,
+            nativeApi,
+            memory,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
-        Assert.Contains(report.Diagnostics, diagnostic =>
-            diagnostic.Level == CollectionDiagnosticLevel.Warning
-            && diagnostic.Message.Contains("invalid table size", StringComparison.Ordinal));
+        Assert.Contains(
+            report.Diagnostics,
+            diagnostic =>
+                diagnostic.Level == CollectionDiagnosticLevel.Warning
+                && diagnostic.Message.Contains("invalid table size", StringComparison.Ordinal)
+        );
         Assert.Equal(memory.AllocationSizes.Count, memory.FreedCount);
         Assert.Equal(0, memory.OutstandingCount);
         Assert.Empty(entries);
@@ -352,5 +510,4 @@ public sealed class NetworkCollectorTests
     {
         bytes.CopyTo(buffer, offset);
     }
-
 }

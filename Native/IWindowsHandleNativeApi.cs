@@ -4,7 +4,12 @@ namespace Lsof.Native;
 internal interface IWindowsHandleNativeApi
 {
     // ntdll!NtQuerySystemInformation: returns the requested system information class.
-    int QuerySystemInformation(int infoClass, IntPtr information, int informationLength, out int returnLength);
+    int QuerySystemInformation(
+        int infoClass,
+        IntPtr information,
+        int informationLength,
+        out int returnLength
+    );
 
     // kernel32!OpenProcess: opens a process and returns a handle with the requested access rights.
     IntPtr OpenProcess(int access, bool inherit, int processId);
@@ -17,7 +22,8 @@ internal interface IWindowsHandleNativeApi
         out IntPtr targetHandle,
         uint access,
         bool inherit,
-        uint options);
+        uint options
+    );
 
     // kernel32!GetCurrentProcess: returns the calling process's pseudo-handle.
     IntPtr GetCurrentProcess();

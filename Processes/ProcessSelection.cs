@@ -10,7 +10,7 @@ internal sealed class ProcessSelection
         _processIds = processIds;
     }
 
-    public static ProcessSelection AllProcesses { get; } = new(true, new HashSet<int>());
+    public static ProcessSelection AllProcesses { get; } = new(true, []);
 
     public bool IncludesAllProcesses { get; }
 
@@ -25,6 +25,6 @@ internal sealed class ProcessSelection
 
     public static ProcessSelection FromProcessIds(IEnumerable<int> processIds)
     {
-        return new ProcessSelection(false, new HashSet<int>(processIds));
+        return new ProcessSelection(false, [.. processIds]);
     }
 }

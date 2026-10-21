@@ -17,17 +17,45 @@ internal static class IpHelperApi
     // Call once with a null/zero-size buffer to learn the required size: that call returns
     // ERROR_INSUFFICIENT_BUFFER (122); success is NO_ERROR (0) and an empty table is ERROR_NO_DATA (232).
     [DllImport("iphlpapi.dll", SetLastError = true)]
-    public static extern uint GetExtendedTcpTable(IntPtr tcpTable, ref int size, bool order, int family, int tableClass, int reserved);
+    public static extern uint GetExtendedTcpTable(
+        IntPtr tcpTable,
+        ref int size,
+        bool order,
+        int family,
+        int tableClass,
+        int reserved
+    );
 
     // iphlpapi!GetExtendedUdpTable: UDP equivalent of GetExtendedTcpTable.
     // UDP_TABLE_OWNER_PID lists UDP endpoints and their owning PID, with the same error convention.
     [DllImport("iphlpapi.dll", SetLastError = true)]
-    public static extern uint GetExtendedUdpTable(IntPtr udpTable, ref int size, bool order, int family, int tableClass, int reserved);
+    public static extern uint GetExtendedUdpTable(
+        IntPtr udpTable,
+        ref int size,
+        bool order,
+        int family,
+        int tableClass,
+        int reserved
+    );
 }
 
 internal interface IIpHelperApi
 {
-    uint GetExtendedTcpTable(IntPtr tcpTable, ref int size, bool order, int family, int tableClass, int reserved);
+    uint GetExtendedTcpTable(
+        IntPtr tcpTable,
+        ref int size,
+        bool order,
+        int family,
+        int tableClass,
+        int reserved
+    );
 
-    uint GetExtendedUdpTable(IntPtr udpTable, ref int size, bool order, int family, int tableClass, int reserved);
+    uint GetExtendedUdpTable(
+        IntPtr udpTable,
+        ref int size,
+        bool order,
+        int family,
+        int tableClass,
+        int reserved
+    );
 }

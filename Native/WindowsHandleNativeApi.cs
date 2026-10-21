@@ -10,7 +10,12 @@ internal sealed class WindowsHandleNativeApi : IWindowsHandleNativeApi
     // Class 64 (SystemExtendedHandleInformation) returns every open handle in the system.
     // Returns an NTSTATUS: 0 is success, 0xC0000004 means the buffer was too small.
     [DllImport("ntdll.dll")]
-    private static extern int NtQuerySystemInformation(int infoClass, IntPtr information, int informationLength, out int returnLength);
+    private static extern int NtQuerySystemInformation(
+        int infoClass,
+        IntPtr information,
+        int informationLength,
+        out int returnLength
+    );
 
     // kernel32!OpenProcess: opens a running process and returns a handle with the requested access.
     // PROCESS_DUP_HANDLE is requested so handles can be duplicated out of the process for inspection.
@@ -29,7 +34,8 @@ internal sealed class WindowsHandleNativeApi : IWindowsHandleNativeApi
         out IntPtr targetHandle,
         uint access,
         bool inherit,
-        uint options);
+        uint options
+    );
 
     // kernel32!GetCurrentProcess: returns the pseudo-handle (-1) for the calling process.
     // The pseudo-handle is always valid and must not be closed.
@@ -48,15 +54,26 @@ internal sealed class WindowsHandleNativeApi : IWindowsHandleNativeApi
     // kernel32!GetFinalPathNameByHandle: writes the normalized final path of a file handle into the
     // caller buffer and returns the required character count excluding the null terminator.
     // flags = 0 requests a DOS path (with a \\?\ or \\?\UNC\ prefix). Returns 0 on failure.
-    [DllImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandle", SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport(
+        "kernel32.dll",
+        EntryPoint = "GetFinalPathNameByHandle",
+        SetLastError = true,
+        CharSet = CharSet.Unicode
+    )]
     private static extern uint GetFinalPathNameByHandleNative(
         IntPtr handle,
-        [Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U2, SizeParamIndex = 2)] char[] path,
+        [Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U2, SizeParamIndex = 2)]
+            char[] path,
         uint pathLength,
-        uint flags);
+        uint flags
+    );
 
-    public int QuerySystemInformation(int infoClass, IntPtr information, int informationLength, out int returnLength) =>
-        NtQuerySystemInformation(infoClass, information, informationLength, out returnLength);
+    public int QuerySystemInformation(
+        int infoClass,
+        IntPtr information,
+        int informationLength,
+        out int returnLength
+    ) => NtQuerySystemInformation(infoClass, information, informationLength, out returnLength);
 
     public IntPtr OpenProcess(int access, bool inherit, int processId) =>
         OpenProcessNative(access, inherit, processId);
@@ -68,8 +85,17 @@ internal sealed class WindowsHandleNativeApi : IWindowsHandleNativeApi
         out IntPtr targetHandle,
         uint access,
         bool inherit,
-        uint options) =>
-        DuplicateHandleNative(sourceProcess, sourceHandle, targetProcess, out targetHandle, access, inherit, options);
+        uint options
+    ) =>
+        DuplicateHandleNative(
+            sourceProcess,
+            sourceHandle,
+            targetProcess,
+            out targetHandle,
+            access,
+            inherit,
+            options
+        );
 
     public IntPtr GetCurrentProcess() => GetCurrentProcessNative();
 

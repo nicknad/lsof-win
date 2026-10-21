@@ -18,14 +18,22 @@ public sealed class ModuleCollectorTests
         ProcessSelection selection = ProcessSelection.FromProcessIds([process.Id]);
         FakeModuleProvider provider = new(new ModuleSnapshot(["C:\\one.dll", "C:\\two.dll"], 0));
         CollectionReport report = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
 
-        ModuleCollector.Collect(catalog, selection, entries, report, provider, TestContext.Current.CancellationToken);
+        ModuleCollector.Collect(
+            catalog,
+            selection,
+            entries,
+            report,
+            provider,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Collection(
             entries,
             entry => Assert.Equal("C:\\one.dll", entry.Name),
-            entry => Assert.Equal("C:\\two.dll", entry.Name));
+            entry => Assert.Equal("C:\\two.dll", entry.Name)
+        );
         Assert.All(entries, entry => Assert.Equal(LsofEntryKind.Module, entry.Kind));
         Assert.Empty(report.Diagnostics);
         Assert.Equal(1, provider.CallCount);
@@ -39,12 +47,22 @@ public sealed class ModuleCollectorTests
         ProcessSelection selection = ProcessSelection.FromProcessIds([process.Id]);
         FakeModuleProvider provider = new(new Win32Exception(5));
         CollectionReport report = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
 
-        ModuleCollector.Collect(catalog, selection, entries, report, provider, TestContext.Current.CancellationToken);
+        ModuleCollector.Collect(
+            catalog,
+            selection,
+            entries,
+            report,
+            provider,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(entries);
-        Assert.Contains(report.Diagnostics, diagnostic => diagnostic.Message.Contains("module lists", StringComparison.Ordinal));
+        Assert.Contains(
+            report.Diagnostics,
+            diagnostic => diagnostic.Message.Contains("module lists", StringComparison.Ordinal)
+        );
     }
 
     private sealed class FakeModuleProvider : IProcessModuleProvider
@@ -68,12 +86,7 @@ public sealed class ModuleCollectorTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             CallCount++;
-            if (_exception is not null)
-            {
-                throw _exception;
-            }
-
-            return _snapshot!;
+            return _exception is not null ? throw _exception : _snapshot!;
         }
     }
 }

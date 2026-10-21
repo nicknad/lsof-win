@@ -15,7 +15,7 @@ public sealed class FileHandleCollectorTests
     {
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         CollectionReport report = new();
-        List<LsofEntry> entries = new();
+        List<LsofEntry> entries = [];
         bool elevationChecked = false;
         bool enumerationCalled = false;
 
@@ -36,7 +36,8 @@ public sealed class FileHandleCollectorTests
                 elevationChecked = true;
                 return false;
             },
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(entries);
         Assert.Empty(report.Diagnostics);
@@ -49,9 +50,15 @@ public sealed class FileHandleCollectorTests
     {
         using ProcessCatalog catalog = TestCatalogFactory.Create();
         CollectionReport report = new();
-        List<LsofEntry> entries = new();
-        WindowsHandleApi.HandleEnumerator emptyEnumeration = (_, _, _) =>
-            new WindowsHandleApi.EnumerationResult([], []);
+        List<LsofEntry> entries = [];
+        static WindowsHandleApi.EnumerationResult EmptyEnumeration(
+            ProcessSelection _,
+            Action<WindowsHandleApi.HandleScanProgress>? _1,
+            CancellationToken _2
+        )
+        {
+            return new([], []);
+        }
 
         FileHandleCollector.Collect(
             catalog,
@@ -60,32 +67,46 @@ public sealed class FileHandleCollectorTests
             entries,
             report,
             progress: null,
-            enumerateHandles: emptyEnumeration,
+            enumerateHandles: EmptyEnumeration,
             isElevated: () => false,
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Empty(entries);
-        Assert.Contains(report.Diagnostics, diagnostic => diagnostic.Message.Contains("not running elevated", StringComparison.Ordinal));
+        Assert.Contains(
+            report.Diagnostics,
+            diagnostic =>
+                diagnostic.Message.Contains("not running elevated", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
     public void Collect_formats_native_handles_as_hex_and_keeps_the_resolved_path()
     {
-        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(FixtureProcessId, "fixture", "C:\\fixture.exe"));
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(FixtureProcessId, "fixture", "C:\\fixture.exe")
+        );
         CollectionReport report = new();
-        List<LsofEntry> entries = new();
-        WindowsHandleApi.HandleEnumerator enumerate = (selection, _, _) =>
+        List<LsofEntry> entries = [];
+        static WindowsHandleApi.EnumerationResult Enumerate(
+            ProcessSelection selection,
+            Action<WindowsHandleApi.HandleScanProgress>? _,
+            CancellationToken _1
+        )
         {
             Assert.True(selection.Includes(FixtureProcessId));
             return new WindowsHandleApi.EnumerationResult(
-                [new WindowsHandleApi.OpenFileHandle
-                {
-                    ProcessId = FixtureProcessId,
-                    Handle = 0xABC,
-                    Path = "C:\\temp\\fixture.txt"
-                }],
-                []);
-        };
+                [
+                    new WindowsHandleApi.OpenFileHandle
+                    {
+                        ProcessId = FixtureProcessId,
+                        Handle = 0xABC,
+                        Path = "C:\\temp\\fixture.txt",
+                    },
+                ],
+                []
+            );
+        }
 
         FileHandleCollector.Collect(
             catalog,
@@ -94,9 +115,10 @@ public sealed class FileHandleCollectorTests
             entries,
             report,
             progress: null,
-            enumerateHandles: enumerate,
+            enumerateHandles: Enumerate,
             isElevated: () => true,
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         LsofEntry entry = Assert.Single(entries);
         Assert.Equal(LsofEntryKind.File, entry.Kind);
@@ -109,16 +131,35 @@ public sealed class FileHandleCollectorTests
     public void Collect_keeps_only_handles_matching_the_file_filter()
     {
         const string wanted = "C:\\temp\\wanted.txt";
-        using ProcessCatalog catalog = TestCatalogFactory.Create(new ProcessInfo(FixtureProcessId, "fixture", "C:\\fixture.exe"));
+        using ProcessCatalog catalog = TestCatalogFactory.Create(
+            new ProcessInfo(FixtureProcessId, "fixture", "C:\\fixture.exe")
+        );
         CollectionReport report = new();
-        List<LsofEntry> entries = new();
-        WindowsHandleApi.HandleEnumerator enumerate = (_, _, _) =>
-            new WindowsHandleApi.EnumerationResult(
+        List<LsofEntry> entries = [];
+        static WindowsHandleApi.EnumerationResult EnumerateWanted(
+            ProcessSelection _,
+            Action<WindowsHandleApi.HandleScanProgress>? _1,
+            CancellationToken _2
+        )
+        {
+            return new(
                 [
-                    new WindowsHandleApi.OpenFileHandle { ProcessId = FixtureProcessId, Handle = 0x1, Path = wanted },
-                    new WindowsHandleApi.OpenFileHandle { ProcessId = FixtureProcessId, Handle = 0x2, Path = "C:\\temp\\other.txt" }
+                    new WindowsHandleApi.OpenFileHandle
+                    {
+                        ProcessId = FixtureProcessId,
+                        Handle = 0x1,
+                        Path = wanted,
+                    },
+                    new WindowsHandleApi.OpenFileHandle
+                    {
+                        ProcessId = FixtureProcessId,
+                        Handle = 0x2,
+                        Path = "C:\\temp\\other.txt",
+                    },
                 ],
-                []);
+                []
+            );
+        }
 
         FileHandleCollector.Collect(
             catalog,
@@ -127,9 +168,10 @@ public sealed class FileHandleCollectorTests
             entries,
             report,
             progress: null,
-            enumerateHandles: enumerate,
+            enumerateHandles: EnumerateWanted,
             isElevated: () => true,
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         LsofEntry entry = Assert.Single(entries);
         Assert.Equal(wanted, entry.Name);

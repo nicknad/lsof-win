@@ -21,8 +21,10 @@ internal static class NetworkSpecParser
         foreach (Range range in input.Split(','))
         {
             ReadOnlySpan<char> part = input[range].Trim();
-            if (part.IsEmpty) continue;
-            if (!IsNetworkSpecSegment(part)) return false;
+            if (part.IsEmpty)
+                continue;
+            if (!IsNetworkSpecSegment(part))
+                return false;
             sawSegment = true;
         }
 
@@ -36,10 +38,14 @@ internal static class NetworkSpecParser
         {
             ReadOnlySpan<char> part = input[range].Trim();
             part = StripProtocolPrefix(part);
-            if (part.IsEmpty) continue;
-            if (part[0] == ':') part = part[1..];
-            if (part.IsEmpty) continue;
-            if (!TryAddPort(portFilters, part)) return false;
+            if (part.IsEmpty)
+                continue;
+            if (part[0] == ':')
+                part = part[1..];
+            if (part.IsEmpty)
+                continue;
+            if (!TryAddPort(portFilters, part))
+                return false;
         }
 
         return true;
@@ -47,8 +53,10 @@ internal static class NetworkSpecParser
 
     internal static bool TryAddPort(List<int> portFilters, ReadOnlySpan<char> value)
     {
-        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port)) return false;
-        if (port < MinimumPort || port > MaximumPort) return false;
+        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port))
+            return false;
+        if (port is < MinimumPort or > MaximumPort)
+            return false;
         portFilters.Add(port);
         return true;
     }
@@ -60,14 +68,18 @@ internal static class NetworkSpecParser
             return true;
         }
 
-        if (part.StartsWith("tcp", StringComparison.OrdinalIgnoreCase) || part.StartsWith("udp", StringComparison.OrdinalIgnoreCase))
+        if (
+            part.StartsWith("tcp", StringComparison.OrdinalIgnoreCase)
+            || part.StartsWith("udp", StringComparison.OrdinalIgnoreCase)
+        )
         {
             return true;
         }
 
         foreach (char c in part)
         {
-            if (!char.IsAsciiDigit(c)) return false;
+            if (!char.IsAsciiDigit(c))
+                return false;
         }
 
         return true;
@@ -75,10 +87,13 @@ internal static class NetworkSpecParser
 
     private static ReadOnlySpan<char> StripProtocolPrefix(ReadOnlySpan<char> value)
     {
-        if (value.StartsWith("tcp", StringComparison.OrdinalIgnoreCase) || value.StartsWith("udp", StringComparison.OrdinalIgnoreCase))
+        if (
+            value.StartsWith("tcp", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("udp", StringComparison.OrdinalIgnoreCase)
+        )
         {
             ReadOnlySpan<char> remainder = value[3..];
-            return remainder.Length > 0 && remainder[0] == ':' ? remainder[1..] : ReadOnlySpan<char>.Empty;
+            return remainder.Length > 0 && remainder[0] == ':' ? remainder[1..] : [];
         }
 
         return value;

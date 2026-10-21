@@ -17,7 +17,7 @@ public sealed class JsonOutputWriterTests
             AddressFamily = NetworkAddressFamily.IPv4,
             Protocol = "TCP",
             LocalAddress = "127.0.0.1",
-            LocalPort = 8080
+            LocalPort = 8080,
         };
         using StringWriter output = new();
 

@@ -24,7 +24,10 @@ public sealed class FileFilterTests
     [Theory]
     [InlineData("C:\\Temp\\File.txt", "C:\\TEMP\\file.TXT")]
     [InlineData("C:/Temp/File.txt", "C:\\Temp\\file.txt")]
-    public void Matches_compares_full_paths_case_insensitively_and_normalizes_separators(string filterPath, string handlePath)
+    public void Matches_compares_full_paths_case_insensitively_and_normalizes_separators(
+        string filterPath,
+        string handlePath
+    )
     {
         FileFilter filter = new([filterPath]);
 

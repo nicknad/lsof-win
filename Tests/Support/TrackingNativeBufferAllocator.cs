@@ -5,9 +5,9 @@ namespace Lsof.Tests.Support;
 
 internal sealed class TrackingNativeBufferAllocator : INativeMemoryAllocator, IDisposable
 {
-    private readonly HashSet<IntPtr> _outstandingBuffers = new();
+    private readonly HashSet<IntPtr> _outstandingBuffers = [];
 
-    public List<int> AllocationSizes { get; } = new();
+    public List<int> AllocationSizes { get; } = [];
 
     public int FreedCount { get; private set; }
 
@@ -25,7 +25,9 @@ internal sealed class TrackingNativeBufferAllocator : INativeMemoryAllocator, ID
     {
         if (!_outstandingBuffers.Remove(buffer))
         {
-            throw new InvalidOperationException("A native buffer was freed more than once or was not allocated by this allocator.");
+            throw new InvalidOperationException(
+                "A native buffer was freed more than once or was not allocated by this allocator."
+            );
         }
 
         Marshal.FreeHGlobal(buffer);

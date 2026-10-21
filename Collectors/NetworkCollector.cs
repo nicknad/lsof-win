@@ -12,7 +12,7 @@ internal static class NetworkCollector
     private enum TransportProtocol
     {
         Tcp,
-        Udp
+        Udp,
     }
 
     // Numeric values match the MIB_TCP_STATE_* constants returned by IP Helper.
@@ -29,7 +29,7 @@ internal static class NetworkCollector
         Closing = 9,
         LastAck = 10,
         TimeWait = 11,
-        DeleteTcb = 12
+        DeleteTcb = 12,
     }
 
     // Byte offsets from Windows MIB_*_OWNER_PID rows.
@@ -84,7 +84,8 @@ internal static class NetworkCollector
         int? RemoteScopeIdOffset,
         int? RemotePortOffset,
         int? StateOffset,
-        NetworkAddressFamily AddressFamily);
+        NetworkAddressFamily AddressFamily
+    );
 
     private const int MaximumTableBufferSize = 128 * 1024 * 1024; // Bound each native table allocation to 128 MiB.
     private const int MaximumTableQueryAttempts = 8; // Bound retries while connections change.
@@ -99,9 +100,19 @@ internal static class NetworkCollector
         IReadOnlyList<int> portFilters,
         List<LsofEntry> entries,
         CollectionReport report,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        Collect(catalog, selection, portFilters, entries, NativeApi, NativeMemory, report, cancellationToken);
+        Collect(
+            catalog,
+            selection,
+            portFilters,
+            entries,
+            NativeApi,
+            NativeMemory,
+            report,
+            cancellationToken
+        );
     }
 
     internal static void Collect(
@@ -112,7 +123,8 @@ internal static class NetworkCollector
         IIpHelperApi nativeApi,
         INativeMemoryAllocator memoryAllocator,
         CollectionReport report,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (selection.IsEmpty)
@@ -122,11 +134,24 @@ internal static class NetworkCollector
 
         (TransportProtocol Protocol, int Family)[] tables =
         [
-            (TransportProtocol.Tcp, IpHelperApi.AfInet), (TransportProtocol.Tcp, IpHelperApi.AfInet6),
-            (TransportProtocol.Udp, IpHelperApi.AfInet), (TransportProtocol.Udp, IpHelperApi.AfInet6),
+            (TransportProtocol.Tcp, IpHelperApi.AfInet),
+            (TransportProtocol.Tcp, IpHelperApi.AfInet6),
+            (TransportProtocol.Udp, IpHelperApi.AfInet),
+            (TransportProtocol.Udp, IpHelperApi.AfInet6),
         ];
         foreach ((TransportProtocol protocol, int family) in tables)
-            CollectTable(protocol, family, catalog, selection, portFilters, entries, nativeApi, memoryAllocator, report, cancellationToken);
+            CollectTable(
+                protocol,
+                family,
+                catalog,
+                selection,
+                portFilters,
+                entries,
+                nativeApi,
+                memoryAllocator,
+                report,
+                cancellationToken
+            );
     }
 
     private static void CollectTable(
@@ -139,26 +164,46 @@ internal static class NetworkCollector
         IIpHelperApi nativeApi,
         INativeMemoryAllocator memoryAllocator,
         CollectionReport report,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         NetworkRowLayout layout = GetLayout(protocol, family);
-        int tableClass = protocol == TransportProtocol.Tcp
-            ? IpHelperApi.TcpTableOwnerPidAll
-            : IpHelperApi.UdpTableOwnerPid;
-        IntPtr buffer = QueryTable(protocol, family, tableClass, nativeApi, memoryAllocator, report, cancellationToken, out int bufferSize);
-        if (buffer == IntPtr.Zero) return;
+        int tableClass =
+            protocol == TransportProtocol.Tcp
+                ? IpHelperApi.TcpTableOwnerPidAll
+                : IpHelperApi.UdpTableOwnerPid;
+        IntPtr buffer = QueryTable(
+            protocol,
+            family,
+            tableClass,
+            nativeApi,
+            memoryAllocator,
+            report,
+            cancellationToken,
+            out int bufferSize
+        );
+        if (buffer == IntPtr.Zero)
+            return;
 
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!TryReadRowCount(buffer, bufferSize, layout.RowSize, report, out int count)) return;
+            if (!TryReadRowCount(buffer, bufferSize, layout.RowSize, report, out int count))
+                return;
 
             IntPtr entry = IntPtr.Add(buffer, sizeof(int)); // A DWORD row count precedes the entries.
 
             for (int i = 0; i < count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                LsofEntry? row = DecodeRow(protocol, entry, layout, catalog, selection, portFilters);
+                LsofEntry? row = DecodeRow(
+                    protocol,
+                    entry,
+                    layout,
+                    catalog,
+                    selection,
+                    portFilters
+                );
                 if (row is not null)
                 {
                     entries.Add(row);
@@ -189,7 +234,8 @@ internal static class NetworkCollector
                 null,
                 Tcp4Layout.RemotePortOffset,
                 Tcp4Layout.StateOffset,
-                NetworkAddressFamily.IPv4),
+                NetworkAddressFamily.IPv4
+            ),
             (TransportProtocol.Tcp, IpHelperApi.AfInet6) => new(
                 Tcp6Layout.RowSize,
                 Tcp6Layout.LocalAddressOffset,
@@ -200,7 +246,8 @@ internal static class NetworkCollector
                 Tcp6Layout.RemoteScopeIdOffset,
                 Tcp6Layout.RemotePortOffset,
                 Tcp6Layout.StateOffset,
-                NetworkAddressFamily.IPv6),
+                NetworkAddressFamily.IPv6
+            ),
             (TransportProtocol.Udp, IpHelperApi.AfInet) => new(
                 Udp4Layout.RowSize,
                 Udp4Layout.LocalAddressOffset,
@@ -211,7 +258,8 @@ internal static class NetworkCollector
                 null,
                 null,
                 null,
-                NetworkAddressFamily.IPv4),
+                NetworkAddressFamily.IPv4
+            ),
             (TransportProtocol.Udp, IpHelperApi.AfInet6) => new(
                 Udp6Layout.RowSize,
                 Udp6Layout.LocalAddressOffset,
@@ -222,8 +270,9 @@ internal static class NetworkCollector
                 null,
                 null,
                 null,
-                NetworkAddressFamily.IPv6),
-            _ => throw new ArgumentOutOfRangeException(nameof(family))
+                NetworkAddressFamily.IPv6
+            ),
+            _ => throw new ArgumentOutOfRangeException(nameof(family)),
         };
     }
 
@@ -235,7 +284,8 @@ internal static class NetworkCollector
         NetworkRowLayout layout,
         ProcessCatalog catalog,
         ProcessSelection selection,
-        IReadOnlyList<int> portFilters)
+        IReadOnlyList<int> portFilters
+    )
     {
         int owningProcess = Marshal.ReadInt32(row, layout.ProcessIdOffset);
         int localPort = ReadPortFromNetworkOrder(Marshal.ReadInt32(row, layout.LocalPortOffset));
@@ -243,7 +293,10 @@ internal static class NetworkCollector
             ? ReadPortFromNetworkOrder(Marshal.ReadInt32(row, remotePortOffset))
             : 0;
         bool hasRemotePort = layout.RemotePortOffset.HasValue && remotePort != 0;
-        if (!selection.Includes(owningProcess) || !MatchesPort(portFilters, localPort, remotePort, hasRemotePort))
+        if (
+            !selection.Includes(owningProcess)
+            || !MatchesPort(portFilters, localPort, remotePort, hasRemotePort)
+        )
         {
             return null;
         }
@@ -263,19 +316,35 @@ internal static class NetworkCollector
         if (layout.RemotePortOffset is not null)
         {
             entry.RemotePort = remotePort;
-            entry.RemoteAddress = ReadAddress(row, layout.RemoteAddressOffset!.Value, layout.RemoteScopeIdOffset);
+            entry.RemoteAddress = ReadAddress(
+                row,
+                layout.RemoteAddressOffset!.Value,
+                layout.RemoteScopeIdOffset
+            );
         }
 
         return entry;
     }
 
-    private static bool MatchesPort(IReadOnlyList<int> ports, int localPort, int remotePort, bool hasRemotePort)
+    private static bool MatchesPort(
+        IReadOnlyList<int> ports,
+        int localPort,
+        int remotePort,
+        bool hasRemotePort
+    )
     {
-        if (ports.Count == 0) return true;
-        return ports.Contains(localPort) || (hasRemotePort && ports.Contains(remotePort));
+        return ports.Count == 0
+            || ports.Contains(localPort)
+            || (hasRemotePort && ports.Contains(remotePort));
     }
 
-    private static bool TryReadRowCount(IntPtr buffer, int bufferSize, int rowSize, CollectionReport report, out int count)
+    private static bool TryReadRowCount(
+        IntPtr buffer,
+        int bufferSize,
+        int rowSize,
+        CollectionReport report,
+        out int count
+    )
     {
         if (bufferSize < sizeof(int))
         {
@@ -304,17 +373,25 @@ internal static class NetworkCollector
         INativeMemoryAllocator memoryAllocator,
         CollectionReport report,
         CancellationToken cancellationToken,
-        out int resultSize)
+        out int resultSize
+    )
     {
         resultSize = 0;
         int size = 0;
         cancellationToken.ThrowIfCancellationRequested();
         // First call passes a null buffer so Windows reports the required table size.
-        uint result = QueryNativeTable(protocol, nativeApi, IntPtr.Zero, ref size, family, tableClass);
+        uint result = QueryNativeTable(
+            protocol,
+            nativeApi,
+            IntPtr.Zero,
+            ref size,
+            family,
+            tableClass
+        );
         cancellationToken.ThrowIfCancellationRequested();
         if (result != IpHelperApi.ErrorInsufficientBuffer)
         {
-            if (result != IpHelperApi.ErrorSuccess && result != IpHelperApi.ErrorNoData)
+            if (result is not (IpHelperApi.ErrorSuccess or IpHelperApi.ErrorNoData))
             {
                 WarnTableQueryFailure(protocol, family, result, report);
             }
@@ -325,7 +402,7 @@ internal static class NetworkCollector
         for (int attempt = 0; attempt < MaximumTableQueryAttempts; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (size <= 0 || size > MaximumTableBufferSize)
+            if (size is <= 0 or > MaximumTableBufferSize)
             {
                 report.AddWarning("Warning: the network table exceeded the buffer size limit.");
                 return IntPtr.Zero;
@@ -337,13 +414,22 @@ internal static class NetworkCollector
             try
             {
                 // Fill the allocated buffer with the current table rows; retried if the table grew.
-                result = QueryNativeTable(protocol, nativeApi, buffer, ref bufferSize, family, tableClass);
+                result = QueryNativeTable(
+                    protocol,
+                    nativeApi,
+                    buffer,
+                    ref bufferSize,
+                    family,
+                    tableClass
+                );
                 cancellationToken.ThrowIfCancellationRequested();
                 if (result == IpHelperApi.ErrorSuccess)
                 {
                     if (bufferSize < 0 || bufferSize > size)
                     {
-                        report.AddWarning("Warning: the network API returned an invalid table size.");
+                        report.AddWarning(
+                            "Warning: the network API returned an invalid table size."
+                        );
                         return IntPtr.Zero;
                     }
 
@@ -366,7 +452,8 @@ internal static class NetworkCollector
                     size,
                     bufferSize,
                     MaximumTableBufferSize,
-                    TableBufferGrowth);
+                    TableBufferGrowth
+                );
                 if (size == 0)
                 {
                     report.AddWarning("Warning: the network table exceeded the buffer size limit.");
@@ -382,7 +469,9 @@ internal static class NetworkCollector
             }
         }
 
-        report.AddWarning("Warning: the network table changed too often to query within the retry limit.");
+        report.AddWarning(
+            "Warning: the network table changed too often to query within the retry limit."
+        );
         return IntPtr.Zero;
     }
 
@@ -392,23 +481,45 @@ internal static class NetworkCollector
         IntPtr buffer,
         ref int size,
         int family,
-        int tableClass)
+        int tableClass
+    )
     {
         // GetExtended*Table are the iphlpapi calls that copy the MIB_*_OWNER_PID rows into the
         // buffer and update size with the bytes written (or required when the buffer is too small).
         return protocol switch
         {
-            TransportProtocol.Tcp => nativeApi.GetExtendedTcpTable(buffer, ref size, false, family, tableClass, 0),
-            TransportProtocol.Udp => nativeApi.GetExtendedUdpTable(buffer, ref size, false, family, tableClass, 0),
-            _ => throw new ArgumentOutOfRangeException(nameof(protocol))
+            TransportProtocol.Tcp => nativeApi.GetExtendedTcpTable(
+                buffer,
+                ref size,
+                false,
+                family,
+                tableClass,
+                0
+            ),
+            TransportProtocol.Udp => nativeApi.GetExtendedUdpTable(
+                buffer,
+                ref size,
+                false,
+                family,
+                tableClass,
+                0
+            ),
+            _ => throw new ArgumentOutOfRangeException(nameof(protocol)),
         };
     }
 
-    private static void WarnTableQueryFailure(TransportProtocol protocol, int family, uint error, CollectionReport report)
+    private static void WarnTableQueryFailure(
+        TransportProtocol protocol,
+        int family,
+        uint error,
+        CollectionReport report
+    )
     {
         string addressFamily = family == IpHelperApi.AfInet ? "IPv4" : "IPv6";
         string protocolName = protocol == TransportProtocol.Tcp ? "TCP" : "UDP";
-        report.AddWarning($"Warning: unable to read the {addressFamily} {protocolName} table (Windows error {error}).");
+        report.AddWarning(
+            $"Warning: unable to read the {addressFamily} {protocolName} table (Windows error {error})."
+        );
     }
 
     private static string ReadIPv4Address(IntPtr entry, int addressOffset)
@@ -442,6 +553,8 @@ internal static class NetworkCollector
     private static string TcpStateName(int state)
     {
         // Enum names match the display strings; only guard unknown values.
-        return Enum.IsDefined(typeof(MibTcpState), state) ? ((MibTcpState)state).ToString() : "Unknown";
+        return Enum.IsDefined(typeof(MibTcpState), state)
+            ? ((MibTcpState)state).ToString()
+            : "Unknown";
     }
 }

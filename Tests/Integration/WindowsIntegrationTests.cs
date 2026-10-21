@@ -19,20 +19,34 @@ public sealed class WindowsIntegrationTests
 
         try
         {
-            using FileStream file = new(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
+            using FileStream file = new(
+                path,
+                FileMode.CreateNew,
+                FileAccess.ReadWrite,
+                FileShare.ReadWrite | FileShare.Delete
+            );
             file.WriteByte(0x5a);
             file.Flush();
 
-            List<WindowsHandleApi.HandleScanProgress> progress = new();
-            WindowsHandleApi.EnumerationResult enumeration = WindowsHandleApi.EnumerateDiskFileHandles(
-                ProcessSelection.FromProcessIds([processId]),
-                progress.Add,
-                TestContext.Current.CancellationToken);
+            List<WindowsHandleApi.HandleScanProgress> progress = [];
+            WindowsHandleApi.EnumerationResult enumeration =
+                WindowsHandleApi.EnumerateDiskFileHandles(
+                    ProcessSelection.FromProcessIds([processId]),
+                    progress.Add,
+                    TestContext.Current.CancellationToken
+                );
             string fullPath = Path.GetFullPath(path);
 
-            Assert.Contains(enumeration.Handles, handle =>
-                handle.ProcessId == processId
-                && string.Equals(Path.GetFullPath(handle.Path), fullPath, StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(
+                enumeration.Handles,
+                handle =>
+                    handle.ProcessId == processId
+                    && string.Equals(
+                        Path.GetFullPath(handle.Path),
+                        fullPath,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+            );
             Assert.NotEmpty(progress);
             Assert.Equal(progress[^1].TotalHandles, progress[^1].ProcessedHandles);
         }
@@ -52,7 +66,11 @@ public sealed class WindowsIntegrationTests
         cancellation.Cancel();
 
         Assert.ThrowsAny<OperationCanceledException>(() =>
-            WindowsHandleApi.EnumerateDiskFileHandles(ProcessSelection.AllProcesses, cancellationToken: cancellation.Token));
+            WindowsHandleApi.EnumerateDiskFileHandles(
+                ProcessSelection.AllProcesses,
+                cancellationToken: cancellation.Token
+            )
+        );
     }
 
     [Fact]
@@ -69,7 +87,7 @@ public sealed class WindowsIntegrationTests
     [Fact]
     public void Network_collection_finds_selected_ephemeral_sockets_and_excludes_unselected_ports()
     {
-        HashSet<int> usedPorts = new();
+        HashSet<int> usedPorts = [];
         using TcpListener selectedTcp = CreateTcpListener(usedPorts);
         using UdpClient selectedUdp = CreateUdpClient(usedPorts);
         using TcpListener unselectedTcp = CreateTcpListener(usedPorts);
@@ -82,29 +100,55 @@ public sealed class WindowsIntegrationTests
         int processId = Environment.ProcessId;
 
         CollectionReport report = new();
-        using ProcessCatalog catalog = ProcessCatalog.Create(report, TestContext.Current.CancellationToken);
+        using ProcessCatalog catalog = ProcessCatalog.Create(
+            report,
+            TestContext.Current.CancellationToken
+        );
         ProcessFilter filter = new([processId.ToString(CultureInfo.InvariantCulture)]);
-        ProcessSelection selection = filter.ResolveSelection(catalog, report, TestContext.Current.CancellationToken);
-        List<LsofEntry> entries = new();
+        ProcessSelection selection = filter.ResolveSelection(
+            catalog,
+            report,
+            TestContext.Current.CancellationToken
+        );
+        List<LsofEntry> entries = [];
 
-        NetworkCollector.Collect(catalog, selection, [selectedTcpPort, selectedUdpPort], entries, report, TestContext.Current.CancellationToken);
+        NetworkCollector.Collect(
+            catalog,
+            selection,
+            [selectedTcpPort, selectedUdpPort],
+            entries,
+            report,
+            TestContext.Current.CancellationToken
+        );
 
-        Assert.Contains(entries, entry =>
-            entry.ProcessId == processId
-            && entry.Protocol == "TCP"
-            && entry.LocalPort == selectedTcpPort);
-        Assert.Contains(entries, entry =>
-            entry.ProcessId == processId
-            && entry.Protocol == "UDP"
-            && entry.LocalPort == selectedUdpPort);
-        Assert.DoesNotContain(entries, entry =>
-            entry.ProcessId == processId
-            && entry.Protocol == "TCP"
-            && entry.LocalPort == unselectedTcpPort);
-        Assert.DoesNotContain(entries, entry =>
-            entry.ProcessId == processId
-            && entry.Protocol == "UDP"
-            && entry.LocalPort == unselectedUdpPort);
+        Assert.Contains(
+            entries,
+            entry =>
+                entry.ProcessId == processId
+                && entry.Protocol == "TCP"
+                && entry.LocalPort == selectedTcpPort
+        );
+        Assert.Contains(
+            entries,
+            entry =>
+                entry.ProcessId == processId
+                && entry.Protocol == "UDP"
+                && entry.LocalPort == selectedUdpPort
+        );
+        Assert.DoesNotContain(
+            entries,
+            entry =>
+                entry.ProcessId == processId
+                && entry.Protocol == "TCP"
+                && entry.LocalPort == unselectedTcpPort
+        );
+        Assert.DoesNotContain(
+            entries,
+            entry =>
+                entry.ProcessId == processId
+                && entry.Protocol == "UDP"
+                && entry.LocalPort == unselectedUdpPort
+        );
     }
 
     private static TcpListener CreateTcpListener(HashSet<int> usedPorts)

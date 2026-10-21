@@ -7,7 +7,7 @@ internal sealed class FileFilter
 {
     private readonly string[] _paths;
 
-    public static FileFilter Empty { get; } = new(Array.Empty<string>());
+    public static FileFilter Empty { get; } = new([]);
 
     public FileFilter(IReadOnlyList<string> filters)
     {
@@ -50,7 +50,8 @@ internal sealed class FileFilter
         {
             normalized = Path.GetFullPath(path);
         }
-        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        catch (Exception exception)
+            when (exception is ArgumentException or NotSupportedException or PathTooLongException)
         {
             normalized = path;
         }

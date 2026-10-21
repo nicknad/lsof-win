@@ -15,7 +15,8 @@ internal static class LsofEntryDeduplicator
         int RemotePort,
         string State,
         string Handle,
-        string Name)
+        string Name
+    )
     {
         public static EntryKey From(LsofEntry entry)
         {
@@ -32,7 +33,8 @@ internal static class LsofEntryDeduplicator
                 entry.RemotePort,
                 entry.State,
                 entry.Handle,
-                entry.Name);
+                entry.Name
+            );
         }
     }
 

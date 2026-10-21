@@ -12,17 +12,18 @@ internal sealed record IpHelperCall(
     int InputSize,
     int TableClass,
     bool Order,
-    int Reserved);
+    int Reserved
+);
 
 internal sealed class FakeIpHelperApi : IIpHelperApi
 {
-    private readonly Dictionary<(bool IsTcp, int Family), FakeQueryHandler> _handlers = new();
+    private readonly Dictionary<(bool IsTcp, int Family), FakeQueryHandler> _handlers = [];
 
-    public List<IpHelperCall> Calls { get; } = new();
+    public List<IpHelperCall> Calls { get; } = [];
 
     public void SetTable(bool isTcp, int family, byte[] table, int? reportedSize = null)
     {
-        _handlers[(isTcp, family)] = (IntPtr buffer, ref int size) =>
+        _handlers[(isTcp, family)] = (buffer, ref size) =>
         {
             if (buffer == IntPtr.Zero)
             {
@@ -47,17 +48,39 @@ internal sealed class FakeIpHelperApi : IIpHelperApi
         _handlers[(isTcp, family)] = handler;
     }
 
-    public uint GetExtendedTcpTable(IntPtr tcpTable, ref int size, bool order, int family, int tableClass, int reserved)
+    public uint GetExtendedTcpTable(
+        IntPtr tcpTable,
+        ref int size,
+        bool order,
+        int family,
+        int tableClass,
+        int reserved
+    )
     {
         return Query(true, tcpTable, ref size, family, tableClass, order, reserved);
     }
 
-    public uint GetExtendedUdpTable(IntPtr udpTable, ref int size, bool order, int family, int tableClass, int reserved)
+    public uint GetExtendedUdpTable(
+        IntPtr udpTable,
+        ref int size,
+        bool order,
+        int family,
+        int tableClass,
+        int reserved
+    )
     {
         return Query(false, udpTable, ref size, family, tableClass, order, reserved);
     }
 
-    private uint Query(bool isTcp, IntPtr table, ref int size, int family, int tableClass, bool order, int reserved)
+    private uint Query(
+        bool isTcp,
+        IntPtr table,
+        ref int size,
+        int family,
+        int tableClass,
+        bool order,
+        int reserved
+    )
     {
         Calls.Add(new IpHelperCall(isTcp, family, table, size, tableClass, order, reserved));
         return _handlers.TryGetValue((isTcp, family), out FakeQueryHandler? handler)

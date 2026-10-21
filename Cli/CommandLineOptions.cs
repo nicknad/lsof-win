@@ -8,10 +8,10 @@ internal sealed class CommandLineOptions
     private const string UserOptionPrefix = "--user=";
     private const string NetworkSwitchPrefix = "-i";
 
-    public List<string> ProcessFilters { get; } = new();
-    public List<string> UserFilters { get; } = new();
-    public List<string> PathFilters { get; } = new();
-    public List<int> PortFilters { get; } = new();
+    public List<string> ProcessFilters { get; } = [];
+    public List<string> UserFilters { get; } = [];
+    public List<string> PathFilters { get; } = [];
+    public List<int> PortFilters { get; } = [];
     public bool Network { get; set; }
     public bool Files { get; set; }
     public bool Modules { get; set; }
@@ -37,11 +37,14 @@ internal sealed class CommandLineOptions
                 case "--network":
                     options.Network = true;
                     // Unix form: "lsof -i :22" passes the port spec as a separate argument.
-                    if (arg == NetworkSwitchPrefix
+                    if (
+                        arg == NetworkSwitchPrefix
                         && i + 1 < args.Length
-                        && NetworkSpecParser.LooksLikeNetworkSpec(args[i + 1]))
+                        && NetworkSpecParser.LooksLikeNetworkSpec(args[i + 1])
+                    )
                     {
-                        if (!NetworkSpecParser.ParseNetworkSpec(options.PortFilters, args[++i])) return false;
+                        if (!NetworkSpecParser.ParseNetworkSpec(options.PortFilters, args[++i]))
+                            return false;
                     }
                     break;
                 case "-f":
@@ -69,21 +72,28 @@ internal sealed class CommandLineOptions
                 case "--process":
                 case "-c":
                 case "--command":
-                    if (!TryReadSeparateValue(args, ref i, out string processValue)) return false;
-                    if (!AddStringFilters(options.ProcessFilters, processValue)) return false;
+                    if (!TryReadSeparateValue(args, ref i, out string processValue))
+                        return false;
+                    if (!AddStringFilters(options.ProcessFilters, processValue))
+                        return false;
                     break;
                 case "-u":
                 case "--user":
-                    if (!TryReadSeparateValue(args, ref i, out string userValue)) return false;
-                    if (!AddStringFilters(options.UserFilters, userValue)) return false;
+                    if (!TryReadSeparateValue(args, ref i, out string userValue))
+                        return false;
+                    if (!AddStringFilters(options.UserFilters, userValue))
+                        return false;
                     break;
                 case "-P":
                 case "--port":
-                    if (!TryReadSeparateValue(args, ref i, out string portValue)) return false;
-                    if (!AddPortFilters(options, portValue)) return false;
+                    if (!TryReadSeparateValue(args, ref i, out string portValue))
+                        return false;
+                    if (!AddPortFilters(options, portValue))
+                        return false;
                     break;
                 default:
-                    if (!TryParseDefault(options, arg)) return false;
+                    if (!TryParseDefault(options, arg))
+                        return false;
                     break;
             }
         }
@@ -118,10 +128,16 @@ internal sealed class CommandLineOptions
         }
 
         // Unix form: "lsof -i:22" attaches the port spec directly to the switch.
-        if (arg.StartsWith(NetworkSwitchPrefix, StringComparison.Ordinal) && arg.Length > NetworkSwitchPrefix.Length)
+        if (
+            arg.StartsWith(NetworkSwitchPrefix, StringComparison.Ordinal)
+            && arg.Length > NetworkSwitchPrefix.Length
+        )
         {
             options.Network = true;
-            return NetworkSpecParser.ParseNetworkSpec(options.PortFilters, arg[NetworkSwitchPrefix.Length..]);
+            return NetworkSpecParser.ParseNetworkSpec(
+                options.PortFilters,
+                arg[NetworkSwitchPrefix.Length..]
+            );
         }
 
         // Any other non-option token is treated as a file path, matching "lsof /path/to/file".
@@ -174,8 +190,10 @@ internal sealed class CommandLineOptions
         foreach (Range range in input.Split(','))
         {
             ReadOnlySpan<char> part = input[range].Trim();
-            if (part.IsEmpty) continue;
-            if (!NetworkSpecParser.TryAddPort(options.PortFilters, part)) return false;
+            if (part.IsEmpty)
+                continue;
+            if (!NetworkSpecParser.TryAddPort(options.PortFilters, part))
+                return false;
         }
 
         return options.PortFilters.Count > initialCount;

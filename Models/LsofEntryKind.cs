@@ -5,11 +5,11 @@ internal enum LsofEntryKind
     Unknown,
     File,
     Connection,
-    Module
+    Module,
 }
 
 internal enum NetworkAddressFamily
 {
     IPv4 = 4,
-    IPv6 = 6
+    IPv6 = 6,
 }

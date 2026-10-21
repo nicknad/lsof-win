@@ -5,6 +5,4 @@ namespace Lsof.Output;
 
 [JsonSourceGenerationOptions(WriteIndented = true)]
 [JsonSerializable(typeof(List<LsofEntry>))]
-internal sealed partial class LsofJsonContext : JsonSerializerContext
-{
-}
+internal sealed partial class LsofJsonContext : JsonSerializerContext { }

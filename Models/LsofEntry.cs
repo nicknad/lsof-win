@@ -14,13 +14,15 @@ internal sealed class LsofEntry
     [JsonIgnore]
     public NetworkAddressFamily? AddressFamily { get; set; }
 
-    public string Category => Kind switch
-    {
-        LsofEntryKind.File => "File",
-        LsofEntryKind.Connection when AddressFamily is NetworkAddressFamily family => family.ToString(),
-        LsofEntryKind.Module => "Module",
-        _ => ""
-    };
+    public string Category =>
+        Kind switch
+        {
+            LsofEntryKind.File => "File",
+            LsofEntryKind.Connection when AddressFamily is NetworkAddressFamily family =>
+                family.ToString(),
+            LsofEntryKind.Module => "Module",
+            _ => "",
+        };
 
     public string Protocol { get; set; } = "";
     public string LocalAddress { get; set; } = "";

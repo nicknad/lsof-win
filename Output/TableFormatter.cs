@@ -4,14 +4,25 @@ namespace Lsof.Output;
 
 internal static class TableFormatter
 {
-    private static readonly string[] HeaderValues = { "Command", "PID", "Type", "FD", "Proto", "Local", "Remote", "State", "Name" };
+    private static readonly string[] HeaderValues =
+    [
+        "Command",
+        "PID",
+        "Type",
+        "FD",
+        "Proto",
+        "Local",
+        "Remote",
+        "State",
+        "Name",
+    ];
 
     public static ReadOnlySpan<string> Headers => HeaderValues;
 
     public static string[] GetCells(LsofEntry entry)
     {
-        return new[]
-        {
+        return
+        [
             entry.ProcessName,
             entry.ProcessId.ToString(),
             entry.Category,
@@ -20,19 +31,15 @@ internal static class TableFormatter
             FormatEndpoint(entry.LocalAddress, entry.LocalPort),
             FormatEndpoint(entry.RemoteAddress, entry.RemotePort),
             entry.State,
-            entry.Name
-        };
+            entry.Name,
+        ];
     }
 
     public static string FormatEndpoint(string address, int port)
     {
-        if (string.IsNullOrEmpty(address) || port == 0) // Port 0 marks an absent or unspecified endpoint here.
-        {
-            return "";
-        }
-
-        return address.Contains(':')
-            ? $"[{address}]:{port}"
+        // Port 0 marks an absent or unspecified endpoint here.
+        return string.IsNullOrEmpty(address) || port == 0 ? ""
+            : address.Contains(':') ? $"[{address}]:{port}"
             : $"{address}:{port}";
     }
 }

@@ -7,9 +7,7 @@ internal sealed class HGlobalMemoryAllocator : INativeMemoryAllocator
 {
     public static readonly HGlobalMemoryAllocator Instance = new();
 
-    private HGlobalMemoryAllocator()
-    {
-    }
+    private HGlobalMemoryAllocator() { }
 
     public IntPtr Allocate(int byteCount)
     {

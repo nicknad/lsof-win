@@ -14,11 +14,22 @@ internal static class FileHandleCollector
         List<LsofEntry> entries,
         CollectionReport report,
         Action<WindowsHandleApi.HandleScanProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // Production wiring: WindowsHandleApi enumerates the native handle table and IsElevated
         // checks the current token. Both are parameters so tests can inject fakes.
-        Collect(catalog, selection, fileFilter, entries, report, progress, WindowsHandleApi.EnumerateDiskFileHandles, IsElevated, cancellationToken);
+        Collect(
+            catalog,
+            selection,
+            fileFilter,
+            entries,
+            report,
+            progress,
+            WindowsHandleApi.EnumerateDiskFileHandles,
+            IsElevated,
+            cancellationToken
+        );
     }
 
     internal static void Collect(
@@ -30,7 +41,8 @@ internal static class FileHandleCollector
         Action<WindowsHandleApi.HandleScanProgress>? progress,
         WindowsHandleApi.HandleEnumerator enumerateHandles,
         Func<bool> isElevated,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (selection.IsEmpty)
@@ -40,9 +52,15 @@ internal static class FileHandleCollector
 
         if (!isElevated())
         {
-            report.AddWarning("Warning: not running elevated; handles owned by other users will be skipped.");
+            report.AddWarning(
+                "Warning: not running elevated; handles owned by other users will be skipped."
+            );
         }
-        WindowsHandleApi.EnumerationResult enumeration = enumerateHandles(selection, progress, cancellationToken);
+        WindowsHandleApi.EnumerationResult enumeration = enumerateHandles(
+            selection,
+            progress,
+            cancellationToken
+        );
         foreach (string warning in enumeration.Warnings)
         {
             report.AddWarning(warning);
