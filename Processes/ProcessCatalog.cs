@@ -40,7 +40,9 @@ internal sealed class ProcessCatalog : IDisposable
             processes = [];
         }
 
-        Dictionary<int, ProcessInfo> processInfoById = [];
+        // C# 15 collection-expression arguments bind to Dictionary(int capacity); one entry per
+        // snapshot process is the expected size, so the table never has to rehash while filling.
+        Dictionary<int, ProcessInfo> processInfoById = [with(capacity: processes.Length)];
         int processIdInspectionFailures = 0;
         int processNameInspectionFailures = 0;
         int processPathInspectionFailures = 0;
