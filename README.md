@@ -63,7 +63,15 @@ lsof C:\Windows\notepad.exe
 lsof -a -p 1234 --json
 ```
 
+## Requirements
+
+The published binary targets .NET 11. .NET 11 raised the minimum x86/x64/Arm64
+instruction sets, so builds from this branch do not run on older CPUs. Check that
+before replacing a deployed copy.
+
 ## Build
+
+Requires the .NET 11 SDK; `global.json` pins the SDK band.
 
 ```powershell
 dotnet build .\lsof.csproj -c Release
